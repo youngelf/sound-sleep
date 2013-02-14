@@ -60,13 +60,14 @@ public class BabyActivity extends Activity {
      */
     private final void changeIconLocation() {
         populateTopLevelDimen();
+        setLowProfileMode();
         final View cloud = findViewById(R.id.cloud);
         final View note = findViewById(R.id.note);
         final double locationX = Math.random();
         // The top half of the screen is for the note.
         note.setY(0);
         // The bottom half of the screen is for white noise.
-        cloud.setY(mHeight-cloud.getHeight());
+        cloud.setY(mHeight - cloud.getHeight());
         // The cloud and the note mirror each other on opposite sides to
         // increase visual separation.
         cloud.animate().x((int)(locationX * (mWidth - cloud.getWidth()))).alpha((float).35-(mAlphaDecrement/100));
@@ -91,10 +92,14 @@ public class BabyActivity extends Activity {
         setContentView(R.layout.main);
         // Go full screen.
         (getActionBar()).hide();
-        // Hide the System status bar
-        final View topLevel = findViewById(R.id.toplevel);
-        topLevel.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
         postClockChange(INITIAL_DELAY);
+        setLowProfileMode();
+    }
+
+    private void setLowProfileMode() {
+        final View topLevel = findViewById(R.id.toplevel);
+        // Hide the System status bar
+        topLevel.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
     }
 
     private final void postClockChange(int delay) {
