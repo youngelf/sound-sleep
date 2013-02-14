@@ -16,14 +16,20 @@ public class BabyActivity extends Activity {
     private final Handler mHandler = new Handler();
     private int mWidth;
     private int mHeight;
-    // Change clock location every minute
-    private static final int DELAY = 1 * 60 * 1000;
+    // Change clock location every ten minutes
+    private static final int DELAY = 10 * 60 * 1000;
+    // Initial delay to go to a random position is much shorter
+    private static final int INITIAL_DELAY = 500;
+
+    // When this is 10, we are at total alpha decrement, and 0, we are at minimum.
+    private int mAlphaDecrement = 1;
 
     private final Runnable mChangeClockLocation = new Runnable() {
         @Override
         public void run() {
             changeClockLocation();
-            postClockChange();
+            changeIconLocation();
+            postClockChange(DELAY);
         }
     };
 
@@ -31,7 +37,14 @@ public class BabyActivity extends Activity {
      * Moves the clock to some random location.
      */
     private final void changeClockLocation() {
+        populateTopLevelDimen();
         final View v = findViewById(R.id.clock);
+        final int x = (int)(Math.random()*(mWidth - v.getWidth()));
+        final int y = (int)(Math.random()*(mHeight- v.getHeight()));
+        v.animate().x(x).y(y);
+    }
+
+    private void populateTopLevelDimen() {
         if (mWidth == 0) {
             final View topLevel = findViewById(R.id.toplevel);
             mWidth = topLevel.getRight();
@@ -40,10 +53,36 @@ public class BabyActivity extends Activity {
             final View topLevel = findViewById(R.id.toplevel);
             mHeight = topLevel.getBottom();
         }
-        final int x = (int)(Math.random()*(mWidth - v.getWidth()));
-        v.setX(x);
-        final int y = (int)(Math.random()*(mHeight- v.getHeight()));
-        v.setY(y);
+    }
+
+    /**
+     * Moves the icons to some random location.
+     */
+    private final void changeIconLocation() {
+        populateTopLevelDimen();
+        final View cloud = findViewById(R.id.cloud);
+        final View note = findViewById(R.id.note);
+        final double locationX = Math.random();
+        // The top half of the screen is for the note.
+        note.setY(0);
+        // The bottom half of the screen is for white noise.
+        cloud.setY(mHeight-cloud.getHeight());
+        // The cloud and the note mirror each other on opposite sides to
+        // increase visual separation.
+        cloud.animate().x((int)(locationX * (mWidth - cloud.getWidth()))).alpha((float).35-(mAlphaDecrement/100));
+        note.animate().x((int)((1-locationX) * (mWidth - note.getWidth()))).alpha((float) .50-(mAlphaDecrement/100));
+        mAlphaDecrement++;
+        if (mAlphaDecrement > 30) {
+            mAlphaDecrement = 30;
+        }
+    }
+
+    void resetAlphaDecrement() {
+        mAlphaDecrement = 0;
+        final View cloud = findViewById(R.id.cloud);
+        final View note = findViewById(R.id.note);
+        cloud.animate().alpha((float) .35);
+        note.animate().alpha((float) .50);
     }
 
     @Override
@@ -55,11 +94,11 @@ public class BabyActivity extends Activity {
         // Hide the System status bar
         final View topLevel = findViewById(R.id.toplevel);
         topLevel.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
-        postClockChange();
+        postClockChange(INITIAL_DELAY);
     }
 
-    private final void postClockChange() {
-        mHandler.postDelayed(mChangeClockLocation, DELAY);
+    private final void postClockChange(int delay) {
+        mHandler.postDelayed(mChangeClockLocation, delay);
     }
 
     /**
@@ -92,6 +131,8 @@ public class BabyActivity extends Activity {
      */
     private void startPlayingResource(int id, int type) {
         releasePlayer();
+        // The user has touched the screen, show the icons a bit brighter.
+        resetAlphaDecrement();
         // If the user hits the same button twice, just stop playing anything.
         if (mTypePlaying != type) {
             mTypePlaying = type;
