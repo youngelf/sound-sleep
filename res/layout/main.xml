@@ -43,5 +43,5 @@
                android:layout_height="wrap_content"
                android:id="@+id/clock"
                android:background="@color/blackSemiTransparent"
-               android:textSize="72dip"/>
+               android:textSize="120dip"/>
 </FrameLayout>

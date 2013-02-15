@@ -70,11 +70,11 @@ public class BabyActivity extends Activity {
         cloud.setY(mHeight - cloud.getHeight());
         // The cloud and the note mirror each other on opposite sides to
         // increase visual separation.
-        cloud.animate().x((int)(locationX * (mWidth - cloud.getWidth()))).alpha((float).35-(mAlphaDecrement/100));
-        note.animate().x((int)((1-locationX) * (mWidth - note.getWidth()))).alpha((float) .50-(mAlphaDecrement/100));
-        mAlphaDecrement++;
-        if (mAlphaDecrement > 30) {
-            mAlphaDecrement = 30;
+        cloud.animate().x((int)(locationX * (mWidth - cloud.getWidth()))).alpha((float)(.35-(mAlphaDecrement/100.0)));
+        note.animate().x((int)((1-locationX) * (mWidth - note.getWidth()))).alpha((float)(.50-(mAlphaDecrement/100.0)));
+        mAlphaDecrement += 5;
+        if (mAlphaDecrement > 20) {
+            mAlphaDecrement = 20;
         }
     }
 
