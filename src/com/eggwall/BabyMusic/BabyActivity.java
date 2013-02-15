@@ -6,6 +6,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
 
+/**
+ * Activity that allows playing music or white noise while showing a big clock.
+ */
 public class BabyActivity extends Activity {
     private MediaPlayer mPlayer;
     private static final int PLAYING_NOTHING = 0;
