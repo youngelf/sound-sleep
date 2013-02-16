@@ -39,7 +39,7 @@ public class BabyActivity extends Activity {
     /**
      * Moves the clock to some random location.
      */
-    private final void changeClockLocation() {
+    private void changeClockLocation() {
         populateTopLevelDimen();
         final View v = findViewById(R.id.clock);
         final int x = (int)(Math.random()*(mWidth - v.getWidth()));
@@ -61,7 +61,7 @@ public class BabyActivity extends Activity {
     /**
      * Moves the icons to some random location.
      */
-    private final void changeIconLocation() {
+    private void changeIconLocation() {
         populateTopLevelDimen();
         setLowProfileMode();
         final View cloud = findViewById(R.id.cloud);
@@ -105,7 +105,7 @@ public class BabyActivity extends Activity {
         topLevel.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
     }
 
-    private final void postClockChange(int delay) {
+    private void postClockChange(int delay) {
         mHandler.postDelayed(mChangeClockLocation, delay);
     }
 
@@ -113,6 +113,7 @@ public class BabyActivity extends Activity {
      * Start white noise
      * @param unused the view that got this click event
      */
+    @SuppressWarnings("unused")
     public void startWhiteNoise(View unused) {
         startPlayingResource(R.raw.brownian_noise, WHITE_NOISE);
     }
@@ -127,6 +128,7 @@ public class BabyActivity extends Activity {
      * Start white noise
      * @param unused the view that got this click event
      */
+    @SuppressWarnings("unused")
     public void startMusic(View unused) {
         startPlayingResource(R.raw.how_deep_is_the_ocean, MUSIC);
     }
@@ -146,6 +148,7 @@ public class BabyActivity extends Activity {
             mTypePlaying = type;
             mPlayer = MediaPlayer.create(this, id);
             mPlayer.start();
+            mPlayer.setLooping(true);
         } else {
             mTypePlaying = PLAYING_NOTHING;
         }
