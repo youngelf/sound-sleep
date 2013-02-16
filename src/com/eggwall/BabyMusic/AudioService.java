@@ -66,7 +66,9 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             mPlayer.prepareAsync();
             mPlayer.setLooping(true);
         } else {
-            mPlayer.stop();
+            if (mPlayer != null) {
+                mPlayer.stop();
+            }
             mTypePlaying = PLAYING_NOTHING;
         }
     }
