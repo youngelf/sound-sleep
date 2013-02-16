@@ -1,7 +1,7 @@
 package com.eggwall.BabyMusic;
 
 import android.app.Activity;
-import android.media.MediaPlayer;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
@@ -10,7 +10,6 @@ import android.view.View;
  * Activity that allows playing music or white noise while showing a big clock.
  */
 public class BabyActivity extends Activity {
-    private MediaPlayer mPlayer;
     private static final int PLAYING_NOTHING = 0;
     private static final int MUSIC = 1;
     private static final int WHITE_NOISE = 2;
@@ -115,13 +114,7 @@ public class BabyActivity extends Activity {
      */
     @SuppressWarnings("unused")
     public void startWhiteNoise(View unused) {
-        startPlayingResource(R.raw.brownian_noise, WHITE_NOISE);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        releasePlayer();
+        startPlayingResource(WHITE_NOISE);
     }
 
     /**
@@ -130,35 +123,30 @@ public class BabyActivity extends Activity {
      */
     @SuppressWarnings("unused")
     public void startMusic(View unused) {
-        startPlayingResource(R.raw.how_deep_is_the_ocean, MUSIC);
+        startPlayingResource(MUSIC);
     }
 
     /**
      * Start playing the resource specified here.
-     * @param id A resource like R.raw.music_file
      * @param type Either MUSIC, or WHITE_NOISE. Passing the same ID twice
      *             is a signal to stop playing music altogether.
      */
-    private void startPlayingResource(int id, int type) {
-        releasePlayer();
+    private void startPlayingResource(int type) {
+        if (type == MUSIC) {
+        }
         // The user has touched the screen, show the icons a bit brighter.
         resetAlphaDecrement();
         // If the user hits the same button twice, just stop playing anything.
+        final Intent i = new Intent(this, AudioService.class);
+        // TODO(viki) Bad idea. We should use some resolution mechanism rather than bare name.
         if (mTypePlaying != type) {
             mTypePlaying = type;
-            mPlayer = MediaPlayer.create(this, id);
-            mPlayer.start();
-            mPlayer.setLooping(true);
+            i.putExtra("type", type);
+            startService(i);
         } else {
             mTypePlaying = PLAYING_NOTHING;
-        }
-    }
-
-    private void releasePlayer() {
-        if (mPlayer != null) {
-            mPlayer.stop();
-            mPlayer.release();
-            mPlayer = null;
+            i.putExtra("type", PLAYING_NOTHING);
+            stopService(i);
         }
     }
 }
