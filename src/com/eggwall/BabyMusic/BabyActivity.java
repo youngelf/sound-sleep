@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 
@@ -135,8 +136,6 @@ public class BabyActivity extends Activity {
      *             is a signal to stop playing music altogether.
      */
     private void startPlayingResource(int type) {
-        if (type == AudioService.MUSIC) {
-        }
         // The user has touched the screen, show the icons a bit brighter.
         resetAlphaDecrement();
         // If the user hits the same button twice, just stop playing anything.
@@ -147,6 +146,7 @@ public class BabyActivity extends Activity {
             i.putExtra(AudioService.TYPE, type);
             startService(i);
         } else {
+            Log.d("BabyActivity", "Stopping the music.");
             mTypePlaying = AudioService.SILENCE;
             i.putExtra(AudioService.TYPE, AudioService.SILENCE);
             stopService(i);

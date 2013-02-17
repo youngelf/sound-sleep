@@ -45,6 +45,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     public int onStartCommand(Intent intent, int flags, int startId) {
         // If we don't get an extra (impossible), play white noise.
         final int typeOfResource = intent.getIntExtra("type", WHITE_NOISE);
+        Log.d("AudioService", "Got resource " + typeOfResource);
         startPlayingResource(0, typeOfResource);
         return 0;
     }
@@ -67,13 +68,18 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             mPlayer.setOnPreparedListener(this);
             final int resourceToPlay;
             if (type == WHITE_NOISE) {
-                resourceToPlay = R.raw.how_deep_is_the_ocean;
-            } else {
+                Log.d("AudioService", "Playing browninan noise");
                 resourceToPlay = R.raw.brownian_noise;
+            } else {
+                Log.d("AudioService", "Playing Eric Clapton");
+                resourceToPlay = R.raw.how_deep_is_the_ocean;
             }
             final AssetFileDescriptor d = getApplicationContext().getResources().openRawResourceFd(resourceToPlay);
+            if (d == null) {
+                Log.wtf("AudioService", "Could not open the file to play");
+            }
             try {
-                mPlayer.setDataSource(d.getFileDescriptor());
+                mPlayer.setDataSource(d.getFileDescriptor(), d.getStartOffset(), d.getLength());
                 d.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -81,9 +87,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             mPlayer.prepareAsync();
             mPlayer.setLooping(true);
         } else {
-            if (mPlayer != null) {
-                mPlayer.stop();
-            }
+            Log.d("AudioService", "Stopping the music");
             mTypePlaying = SILENCE;
         }
     }
@@ -112,6 +116,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     @Override
     public void onDestroy() {
+        Log.d("AudioService", "bye bye");
         releasePlayer();
         super.onDestroy();
     }
