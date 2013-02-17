@@ -31,11 +31,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
-        if (mPlayer != null) {
-            mPlayer.stop();
-            mPlayer.release();
-            mPlayer = null;
-        }
+        releasePlayer();
         Log.e("AudioService", "BabyMusic.AudioService encountered onError");
         // Propagate the error up.
         return false;
