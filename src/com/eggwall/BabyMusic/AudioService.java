@@ -19,14 +19,20 @@ package com.eggwall.BabyMusic;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetFileDescriptor;
 import android.media.MediaPlayer;
+import android.os.Build;
+import android.os.Environment;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
 
+import java.io.File;
+import java.io.FileDescriptor;
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Runs the music in the background and holds a wake lock during the duration of music playing.
@@ -45,6 +51,16 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     public static final int MUSIC = 1;
     /** Play standard white noise file (included in the application */
     public static final int WHITE_NOISE = 2;
+
+    /** Name of the directory in the main folder containing baby music */
+    private final static String BABY_MUSIC_DIR = "babysong";
+    /** The actual directory that corresponds to the external SD card. */
+    private File mBabyDir;
+    /** Names of all the songs */
+    private String[] mFilenames;
+    /** Which location are we currently playing, -1 if playing none */
+    private static final int INVALID_POSITION = -1;
+    private int mPosition = INVALID_POSITION;
 
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
@@ -88,21 +104,120 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         } else {
             // Try to open the SD card and read from there. If nothing is found, play the
             // default music.
-            Log.v(TAG, "No SD card music found, playing default music");
-            resourceToPlay = R.raw.all_of_me;
-        }
-        final AssetFileDescriptor d = getApplicationContext().getResources().openRawResourceFd(resourceToPlay);
-        if (d == null) {
-            Log.wtf(TAG, "Could not open the file to play");
+            final int nextPosition = nextTrackFromCard();
+            if (nextPosition == -1) {
+                Log.v(TAG, "No SD card music found, playing default music");
+                resourceToPlay = R.raw.all_of_me;
+            } else {
+                resourceToPlay = INVALID_POSITION;
+            }
         }
         try {
-            mPlayer.setDataSource(d.getFileDescriptor(), d.getStartOffset(), d.getLength());
-            d.close();
+            if (resourceToPlay == INVALID_POSITION) {
+                String file = mBabyDir.getAbsolutePath() + File.pathSeparator + mFilenames[mPosition];
+                Log.d(TAG, "Now playing " + file);
+                mPlayer.setDataSource(file);
+            } else {
+                final AssetFileDescriptor d = getResources().openRawResourceFd(resourceToPlay);
+                if (d == null) {
+                    Log.wtf(TAG, "Could not open the file to play");
+                    return;
+                }
+                final FileDescriptor fd = d.getFileDescriptor();
+                mPlayer.setDataSource(fd, d.getStartOffset(), d.getLength());
+                d.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
         mPlayer.prepareAsync();
         mPlayer.setLooping(true);
+    }
+
+    /**
+     * Returns the position of the next track to play. Returns -1 if nothing could be
+     * played.
+     */
+    private int nextTrackFromCard() {
+        if (mFilenames == null || mFilenames.length <= 0) {
+            // Fill the filename list and return the first position.
+            mFilenames = getMusicList();
+            Log.e(TAG, "All filenames: " + Arrays.toString(mFilenames));
+            if (mFilenames.length <= 0) {
+                Log.e(TAG, "Baby music has no files.");
+                return INVALID_POSITION;
+            }
+            // The first track is at 0.
+            mPosition = 0;
+            return mPosition;
+        }
+        // Increment the position and return it
+        mPosition++;
+        if (mPosition >= mFilenames.length) {
+            mPosition = 0;
+        }
+        return mPosition;
+    }
+
+    /**
+     * Returns the names of all the music files available to the user.
+     * @return
+     */
+    private String[] getMusicList() {
+        if (mBabyDir == null) {
+            mBabyDir = getBabyDir(this.getApplicationContext());
+        }
+        // Still nothing? We don't have a valid baby music directory.
+        if (mBabyDir == null) {
+            return new String[0];
+        }
+        final String[] noFiles = new String[0];
+        final String[] filenames = mBabyDir.list();
+        Log.e(TAG, "All filenames: " + Arrays.toString(filenames));
+        if (filenames.length <= 0) {
+            Log.e(TAG, "Baby music has no files." + mBabyDir);
+            return noFiles;
+        }
+        return filenames;
+    }
+
+    private static File getBabyDir (Context context) {
+        final String state = Environment.getExternalStorageState();
+        if (!Environment.MEDIA_MOUNTED.equals(state)) {
+            // If we don't have an SD card, cannot do anything here.
+            Log.e(TAG, "SD card root directory is not available");
+            return null;
+        }
+        final File rootSdLocation;
+        if (Build.VERSION.SDK_INT >= 8) {
+            rootSdLocation = getBabyDirAfterV8(context);
+        } else {
+            rootSdLocation = getBabyDirTillV7();
+        }
+        if (rootSdLocation == null || !rootSdLocation.isDirectory()) {
+            // Not a directory? Completely unexpected.
+            Log.e(TAG, "SD card root directory is NOT a directory: " + rootSdLocation);
+            return null;
+        }
+        // Navigate over to the baby music directory.
+        final File babyMusicDir = new File(rootSdLocation, BABY_MUSIC_DIR);
+        if (!babyMusicDir.isDirectory()) {
+            Log.e(TAG, "Baby music directory does not exist." + rootSdLocation);
+            return null;
+        }
+        return babyMusicDir;
+    }
+
+    private static File getBabyDirAfterV8(Context context) {
+        return context.getExternalFilesDir(null);
+    }
+
+    /**
+     * Get a file object that corresponds to the baby music directory.
+     * @return
+     */
+    private static File getBabyDirTillV7() {
+        return Environment.getExternalStorageDirectory();
     }
 
     /**
