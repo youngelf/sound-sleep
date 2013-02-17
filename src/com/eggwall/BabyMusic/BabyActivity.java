@@ -5,14 +5,12 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
+import android.view.WindowManager;
 
 /**
  * Activity that allows playing music or white noise while showing a big clock.
  */
 public class BabyActivity extends Activity {
-    private static final int PLAYING_NOTHING = 0;
-    private static final int MUSIC = 1;
-    private static final int WHITE_NOISE = 2;
     /** Set to MUSIC or WHITE_NOISE */
     private int mTypePlaying = 0;
     private final Handler mHandler = new Handler();
@@ -62,7 +60,7 @@ public class BabyActivity extends Activity {
      */
     private void changeIconLocation() {
         populateTopLevelDimen();
-        setLowProfileMode();
+        setGlobalScreenSettings();
         final View cloud = findViewById(R.id.cloud);
         final View note = findViewById(R.id.note);
         final double locationX = Math.random();
@@ -95,13 +93,18 @@ public class BabyActivity extends Activity {
         // Go full screen.
         (getActionBar()).hide();
         postClockChange(INITIAL_DELAY);
-        setLowProfileMode();
+        setGlobalScreenSettings();
     }
 
-    private void setLowProfileMode() {
+    /**
+     * Set the full screen view, and also request a wake lock.
+     */
+    private void setGlobalScreenSettings() {
         final View topLevel = findViewById(R.id.toplevel);
         // Hide the System status bar
         topLevel.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
+        // Keep the screen always on, irrespective of power state.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     private void postClockChange(int delay) {
@@ -114,7 +117,7 @@ public class BabyActivity extends Activity {
      */
     @SuppressWarnings("unused")
     public void startWhiteNoise(View unused) {
-        startPlayingResource(WHITE_NOISE);
+        startPlayingResource(AudioService.WHITE_NOISE);
     }
 
     /**
@@ -123,7 +126,7 @@ public class BabyActivity extends Activity {
      */
     @SuppressWarnings("unused")
     public void startMusic(View unused) {
-        startPlayingResource(MUSIC);
+        startPlayingResource(AudioService.MUSIC);
     }
 
     /**
@@ -132,7 +135,7 @@ public class BabyActivity extends Activity {
      *             is a signal to stop playing music altogether.
      */
     private void startPlayingResource(int type) {
-        if (type == MUSIC) {
+        if (type == AudioService.MUSIC) {
         }
         // The user has touched the screen, show the icons a bit brighter.
         resetAlphaDecrement();
@@ -141,11 +144,11 @@ public class BabyActivity extends Activity {
         // TODO(viki) Bad idea. We should use some resolution mechanism rather than bare name.
         if (mTypePlaying != type) {
             mTypePlaying = type;
-            i.putExtra("type", type);
+            i.putExtra(AudioService.TYPE, type);
             startService(i);
         } else {
-            mTypePlaying = PLAYING_NOTHING;
-            i.putExtra("type", PLAYING_NOTHING);
+            mTypePlaying = AudioService.SILENCE;
+            i.putExtra(AudioService.TYPE, AudioService.SILENCE);
             stopService(i);
         }
     }

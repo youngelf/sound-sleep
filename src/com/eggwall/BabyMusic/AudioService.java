@@ -16,11 +16,17 @@ import java.io.IOException;
  * Runs the music in the background and holds a wake lock during the duration of music playing.
  */
 public class AudioService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener {
+    /**
+     * The tag used to pass the music type. Can only be MUSIC or WHITE_NOISE
+     */
+    public static final String TYPE = "type";
     private MediaPlayer mPlayer;
-    private static final int PLAYING_NOTHING = 0;
-    private static final int MUSIC = 1;
-    private static final int WHITE_NOISE = 2;
-    /** Set to MUSIC or WHITE_NOISE */
+    public static final int SILENCE = 0;
+    public static final int MUSIC = 1;
+    public static final int WHITE_NOISE = 2;
+    /**
+     * Set to MUSIC or WHITE_NOISE
+     */
     private int mTypePlaying = 0;
 
     @Override
@@ -37,26 +43,35 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        startPlayingResource(0, MUSIC);
+        // If we don't get an extra (impossible), play white noise.
+        final int typeOfResource = intent.getIntExtra("type", WHITE_NOISE);
+        startPlayingResource(0, typeOfResource);
         return 0;
     }
 
     /**
      * Start playing the resource specified here.
-     * @param id A resource like R.raw.music_file
+     *
+     * @param id   A resource like R.raw.music_file
      * @param type Either MUSIC, or WHITE_NOISE. Passing the same ID twice
      *             is a signal to stop playing music altogether.
      */
     private void startPlayingResource(int id, int type) {
         releasePlayer();
         // If the user hits the same button twice, just stop playing anything.
-        if (mTypePlaying != type) {
+        if (mTypePlaying != type && type != SILENCE) {
             mTypePlaying = type;
             mPlayer = new MediaPlayer();
             // Keep the CPU awake while playing music.
             mPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
             mPlayer.setOnPreparedListener(this);
-            AssetFileDescriptor d = getApplicationContext().getResources().openRawResourceFd(R.raw.how_deep_is_the_ocean);
+            final int resourceToPlay;
+            if (type == WHITE_NOISE) {
+                resourceToPlay = R.raw.how_deep_is_the_ocean;
+            } else {
+                resourceToPlay = R.raw.brownian_noise;
+            }
+            final AssetFileDescriptor d = getApplicationContext().getResources().openRawResourceFd(resourceToPlay);
             try {
                 mPlayer.setDataSource(d.getFileDescriptor());
                 d.close();
@@ -69,14 +84,18 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             if (mPlayer != null) {
                 mPlayer.stop();
             }
-            mTypePlaying = PLAYING_NOTHING;
+            mTypePlaying = SILENCE;
         }
     }
 
+    /**
+     * The idea here is to set the notification so that the service can always run. However, ths is not
+     * happening correctly right now.
+     */
     private void setForegroundService() {
-        PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
+        final PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
                 new Intent(getApplicationContext(), BabyActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification notification = new Notification();
+        final Notification notification = new Notification();
         notification.tickerText = "Baby Music";
         notification.icon = R.drawable.ic_launcher;
         notification.flags |= Notification.FLAG_ONGOING_EVENT;
