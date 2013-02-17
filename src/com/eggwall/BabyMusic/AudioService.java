@@ -42,7 +42,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     public int onStartCommand(Intent intent, int flags, int startId) {
         // If we don't get an extra (impossible), play white noise.
         final int typeOfResource = intent.getIntExtra("type", WHITE_NOISE);
-        Log.d(TAG, "Got resource " + typeOfResource);
+        Log.v(TAG, "Got resource " + typeOfResource);
         startPlayingResource(typeOfResource);
         return 0;
     }
@@ -58,7 +58,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         // If the user hits the same button twice, just stop playing anything.
         if (type == SILENCE) {
             // Nothing to do here. Just quit
-            Log.d(TAG, "Stopping the music");
+            Log.v(TAG, "Stopping the music");
             return;
         }
         mPlayer = new MediaPlayer();
@@ -67,12 +67,12 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         mPlayer.setOnPreparedListener(this);
         final int resourceToPlay;
         if (type == WHITE_NOISE) {
-            Log.d(TAG, "Playing browninan noise");
+            Log.v(TAG, "Playing browninan noise");
             resourceToPlay = R.raw.noise;
         } else {
             // Try to open the SD card and read from there. If nothing is found, play the
             // default music.
-            Log.d(TAG, "No SD card music found, playing default music");
+            Log.v(TAG, "No SD card music found, playing default music");
             resourceToPlay = R.raw.all_of_me;
         }
         final AssetFileDescriptor d = getApplicationContext().getResources().openRawResourceFd(resourceToPlay);
@@ -116,7 +116,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     @Override
     public void onDestroy() {
-        Log.d(TAG, "bye bye");
+        Log.v(TAG, "bye bye");
         releasePlayer();
         super.onDestroy();
     }

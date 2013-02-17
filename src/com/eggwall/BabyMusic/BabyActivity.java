@@ -157,7 +157,7 @@ public class BabyActivity extends Activity {
             i.putExtra(AudioService.TYPE, type);
             startService(i);
         } else {
-            Log.d(TAG, "Stopping the music.");
+            Log.v(TAG, "Stopping the music.");
             mTypePlaying = AudioService.SILENCE;
             i.putExtra(AudioService.TYPE, AudioService.SILENCE);
             stopService(i);
