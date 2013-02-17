@@ -12,6 +12,8 @@ import android.view.WindowManager;
  * Activity that allows playing music or white noise while showing a big clock.
  */
 public class BabyActivity extends Activity {
+    /** For logging */
+    private static final String TAG = "BabyActivity";
     /** Set to MUSIC or WHITE_NOISE */
     private int mTypePlaying = 0;
     private final Handler mHandler = new Handler();
@@ -25,6 +27,9 @@ public class BabyActivity extends Activity {
     // When this is 10, we are at total alpha decrement, and 0, we are at minimum.
     private int mAlphaDecrement = 1;
 
+    /**
+     * Changes the clock and the icon location and posts itself after a delay.
+     */
     private final Runnable mChangeClockLocation = new Runnable() {
         @Override
         public void run() {
@@ -45,6 +50,9 @@ public class BabyActivity extends Activity {
         v.animate().x(x).y(y);
     }
 
+    /**
+     * Calculates the dimension of the entire window. Safe if called repeatedly.
+     */
     private void populateTopLevelDimen() {
         if (mWidth == 0) {
             final View topLevel = findViewById(R.id.toplevel);
@@ -79,6 +87,9 @@ public class BabyActivity extends Activity {
         }
     }
 
+    /**
+     * Sets the visibility of the icons back to full brightness.
+     */
     void resetAlphaDecrement() {
         mAlphaDecrement = 0;
         final View cloud = findViewById(R.id.cloud);
@@ -146,7 +157,7 @@ public class BabyActivity extends Activity {
             i.putExtra(AudioService.TYPE, type);
             startService(i);
         } else {
-            Log.d("BabyActivity", "Stopping the music.");
+            Log.d(TAG, "Stopping the music.");
             mTypePlaying = AudioService.SILENCE;
             i.putExtra(AudioService.TYPE, AudioService.SILENCE);
             stopService(i);

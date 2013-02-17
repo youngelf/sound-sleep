@@ -1,0 +1,9 @@
+Music used in this program is available in the pubic domain.
+The default music file is Mildred Bailey's song, "All of me" available at:
+http://archive.org/details/PaulWhitemanwithMildredBailey
+The recording was made in 1932, and is out of copyright in the US. Local laws may differ.
+
+Brownian noise is also downloaded from archive.org:
+http://archive.org/details/TenMinutesOfWhiteNoisePinkNoiseAndBrownianNoise
+The file is under a Creative Commons license and might be reduced in length to reduce
+file size.
