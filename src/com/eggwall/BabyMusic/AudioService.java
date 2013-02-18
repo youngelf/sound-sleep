@@ -119,9 +119,12 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         }
         try {
             if (resourceToPlay == INVALID_POSITION) {
+                // Play files, not resources. Play the music file given here.
                 final String file = mBabyDir.getAbsolutePath() + File.separator + mFilenames[mPosition];
                 Log.d(TAG, "Now playing " + file);
                 mPlayer.setDataSource(file);
+                // Play this song, and a different one.
+                mPlayer.setLooping(false);
             } else {
                 final AssetFileDescriptor d = getResources().openRawResourceFd(resourceToPlay);
                 if (d == null) {
@@ -131,12 +134,13 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
                 final FileDescriptor fd = d.getFileDescriptor();
                 mPlayer.setDataSource(fd, d.getStartOffset(), d.getLength());
                 d.close();
+                // White noise or the default song is looped forever.
+                mPlayer.setLooping(true);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
         mPlayer.prepareAsync();
-        mPlayer.setLooping(true);
     }
 
     /**
