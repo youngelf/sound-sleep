@@ -19,7 +19,6 @@ package com.eggwall.BabyMusic;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetFileDescriptor;
 import android.media.MediaPlayer;
@@ -29,9 +28,7 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
 
-import java.io.File;
-import java.io.FileDescriptor;
-import java.io.IOException;
+import java.io.*;
 import java.util.Arrays;
 
 /**
@@ -114,7 +111,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         }
         try {
             if (resourceToPlay == INVALID_POSITION) {
-                String file = mBabyDir.getAbsolutePath() + File.pathSeparator + mFilenames[mPosition];
+                final String file = mBabyDir.getAbsolutePath() + File.separator + mFilenames[mPosition];
                 Log.d(TAG, "Now playing " + file);
                 mPlayer.setDataSource(file);
             } else {
@@ -165,7 +162,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      */
     private String[] getMusicList() {
         if (mBabyDir == null) {
-            mBabyDir = getBabyDir(this.getApplicationContext());
+            mBabyDir = getBabyDir();
         }
         // Still nothing? We don't have a valid baby music directory.
         if (mBabyDir == null) {
@@ -181,7 +178,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         return filenames;
     }
 
-    private static File getBabyDir (Context context) {
+    private static File getBabyDir() {
         final String state = Environment.getExternalStorageState();
         if (!Environment.MEDIA_MOUNTED.equals(state)) {
             // If we don't have an SD card, cannot do anything here.
@@ -190,11 +187,11 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         }
         final File rootSdLocation;
         if (Build.VERSION.SDK_INT >= 8) {
-            rootSdLocation = getBabyDirAfterV8(context);
+            rootSdLocation = getBabyDirAfterV8();
         } else {
             rootSdLocation = getBabyDirTillV7();
         }
-        if (rootSdLocation == null || !rootSdLocation.isDirectory()) {
+        if (rootSdLocation == null) {
             // Not a directory? Completely unexpected.
             Log.e(TAG, "SD card root directory is NOT a directory: " + rootSdLocation);
             return null;
@@ -208,16 +205,21 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         return babyMusicDir;
     }
 
-    private static File getBabyDirAfterV8(Context context) {
-        return context.getExternalFilesDir(null);
+    /**
+     * sdcard/music in SDK >= 8
+     * @return
+     */
+    private static File getBabyDirAfterV8() {
+        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
     }
 
     /**
-     * Get a file object that corresponds to the baby music directory.
+     * sdcard/music in SDK < 8
      * @return
      */
     private static File getBabyDirTillV7() {
-        return Environment.getExternalStorageDirectory();
+        // TODO(viki) Untested, ensure this works on v7 and below
+        return new File(Environment.getExternalStorageDirectory(), Environment.DIRECTORY_MUSIC);
     }
 
     /**
