@@ -49,6 +49,8 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     /** Play standard white noise file (included in the application */
     public static final int WHITE_NOISE = 2;
 
+    /** Set to MUSIC or WHITE_NOISE */
+    private int mTypePlaying = 0;
     /** Name of the directory in the main folder containing baby music */
     private final static String BABY_MUSIC_DIR = "babysong";
     /** The actual directory that corresponds to the external SD card. */
@@ -71,7 +73,14 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     public int onStartCommand(Intent intent, int flags, int startId) {
         // If we don't get an extra (impossible), play white noise.
         final int typeOfResource = intent.getIntExtra("type", WHITE_NOISE);
-        play(typeOfResource);
+        if (mTypePlaying == typeOfResource || typeOfResource == SILENCE) {
+            // Pressing the same button twice is an instruction to stop playing this music.
+            mTypePlaying = SILENCE;
+        } else {
+            // Switch to the other type of music
+            mTypePlaying = typeOfResource;
+        }
+        play(mTypePlaying);
         return 0;
     }
 

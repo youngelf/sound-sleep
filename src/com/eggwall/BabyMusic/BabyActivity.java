@@ -18,10 +18,12 @@ package com.eggwall.BabyMusic;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 
 /**
@@ -30,8 +32,6 @@ import android.view.WindowManager;
 public class BabyActivity extends Activity {
     /** For logging */
     private static final String TAG = "BabyActivity";
-    /** Set to MUSIC or WHITE_NOISE */
-    private int mTypePlaying = 0;
     private final Handler mHandler = new Handler();
     private int mWidth;
     private int mHeight;
@@ -43,6 +43,7 @@ public class BabyActivity extends Activity {
     // When this is 10, we are at total alpha decrement, and 0, we are at minimum.
     private int mAlphaDecrement = 1;
 
+    private final int sdk = Build.VERSION.SDK_INT;
     /**
      * Changes the clock and the icon location and posts itself after a delay.
      */
@@ -63,7 +64,13 @@ public class BabyActivity extends Activity {
         final View v = findViewById(R.id.clock);
         final int x = (int)(Math.random()*(mWidth - v.getWidth()));
         final int y = (int)(Math.random()*(mHeight- v.getHeight()));
-        v.animate().x(x).y(y);
+        if (sdk >= 12) {
+            v.animate().x(x).y(y);
+        } else {
+            // Figure out how to do this.
+//            v.setX(x);
+  //          v.setY(y);
+        }
     }
 
     /**
@@ -84,6 +91,10 @@ public class BabyActivity extends Activity {
      * Moves the icons to some random location.
      */
     private void changeIconLocation() {
+        if (sdk < 11) {
+            // TODO(viki): Figure out how to do this.
+            return;
+        }
         populateTopLevelDimen();
         setGlobalScreenSettings();
         final View cloud = findViewById(R.id.cloud);
@@ -107,6 +118,9 @@ public class BabyActivity extends Activity {
      * Sets the visibility of the icons back to full brightness.
      */
     void resetAlphaDecrement() {
+        if (sdk < 11) {
+            return;
+        }
         mAlphaDecrement = 0;
         final View cloud = findViewById(R.id.cloud);
         final View note = findViewById(R.id.note);
@@ -117,9 +131,15 @@ public class BabyActivity extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
         // Go full screen.
-        (getActionBar()).hide();
+        if (sdk >= 11) {
+            (getActionBar()).hide();
+        } else {
+            requestWindowFeature(Window.FEATURE_NO_TITLE);
+        }
+        final int fullscreen = WindowManager.LayoutParams.FLAG_FULLSCREEN;
+        getWindow().setFlags(fullscreen, fullscreen);
+        setContentView(R.layout.main);
         postClockChange(INITIAL_DELAY);
         setGlobalScreenSettings();
     }
@@ -130,7 +150,9 @@ public class BabyActivity extends Activity {
     private void setGlobalScreenSettings() {
         final View topLevel = findViewById(R.id.toplevel);
         // Hide the System status bar
-        topLevel.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
+        if (sdk >= 11) {
+            topLevel.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
+        }
         // Keep the screen always on, irrespective of power state.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
@@ -165,18 +187,10 @@ public class BabyActivity extends Activity {
     private void startPlayingResource(int type) {
         // The user has touched the screen, show the icons a bit brighter.
         resetAlphaDecrement();
-        // If the user hits the same button twice, just stop playing anything.
-        final Intent i = new Intent(this, AudioService.class);
         // TODO(viki) Bad idea. We should use some resolution mechanism rather than bare name.
-        if (mTypePlaying != type) {
-            mTypePlaying = type;
-            i.putExtra(AudioService.TYPE, type);
-            startService(i);
-        } else {
-            Log.v(TAG, "Stopping the music.");
-            mTypePlaying = AudioService.SILENCE;
-            i.putExtra(AudioService.TYPE, AudioService.SILENCE);
-            stopService(i);
-        }
+        final Intent i = new Intent(this, AudioService.class);
+        // Play the music instructed.
+        i.putExtra(AudioService.TYPE, type);
+        startService(i);
     }
 }
