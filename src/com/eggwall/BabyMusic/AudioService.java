@@ -34,7 +34,7 @@ import java.util.Arrays;
 /**
  * Runs the music in the background and holds a wake lock during the duration of music playing.
  */
-public class AudioService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener {
+public class AudioService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
     /** For logging */
     private static final String TAG = "AudioService";
     /**
@@ -80,6 +80,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             // Switch to the other type of music
             mTypePlaying = typeOfResource;
         }
+        releasePlayer();
         play(mTypePlaying);
         return 0;
     }
@@ -91,8 +92,6 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      *             is a signal to stop playing music altogether.
      */
     private void play(int type) {
-        releasePlayer();
-        // If the user hits the same button twice, just stop playing anything.
         if (type == SILENCE) {
             // Nothing to do here. Just quit
             Log.v(TAG, "Stopping the music");
@@ -123,6 +122,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
                 final String file = mBabyDir.getAbsolutePath() + File.separator + mFilenames[mPosition];
                 Log.d(TAG, "Now playing " + file);
                 mPlayer.setDataSource(file);
+                mPlayer.setOnCompletionListener(this);
                 // Play this song, and a different one.
                 mPlayer.setLooping(false);
             } else {
@@ -268,5 +268,13 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     public void onPrepared(MediaPlayer mp) {
         setForegroundService();
         mPlayer.start();
+    }
+
+    @Override
+    public void onCompletion(MediaPlayer mp) {
+        // This method is only called for songs, since white noise is on endless loop, and will never get this event.
+        releasePlayer();
+        // Play the next song.
+        play(mTypePlaying);
     }
 }
