@@ -220,7 +220,6 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      * @return
      */
     private static File getBabyDirTillV7() {
-        // TODO(viki) Untested, ensure this works on v7 and below
         return new File(Environment.getExternalStorageDirectory(), Environment.DIRECTORY_MUSIC);
     }
 
