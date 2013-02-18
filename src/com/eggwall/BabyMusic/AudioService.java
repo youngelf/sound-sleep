@@ -71,8 +71,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     public int onStartCommand(Intent intent, int flags, int startId) {
         // If we don't get an extra (impossible), play white noise.
         final int typeOfResource = intent.getIntExtra("type", WHITE_NOISE);
-        Log.v(TAG, "Got resource " + typeOfResource);
-        startPlayingResource(typeOfResource);
+        play(typeOfResource);
         return 0;
     }
 
@@ -82,7 +81,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      * @param type Either MUSIC, or WHITE_NOISE. Passing the same ID twice
      *             is a signal to stop playing music altogether.
      */
-    private void startPlayingResource(int type) {
+    private void play(int type) {
         releasePlayer();
         // If the user hits the same button twice, just stop playing anything.
         if (type == SILENCE) {
@@ -139,20 +138,14 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         if (mFilenames == null || mFilenames.length <= 0) {
             // Fill the filename list and return the first position.
             mFilenames = getMusicList();
-            Log.e(TAG, "All filenames: " + Arrays.toString(mFilenames));
+            Log.d(TAG, "All filenames: " + Arrays.toString(mFilenames));
             if (mFilenames.length <= 0) {
                 Log.e(TAG, "Baby music has no files.");
                 return INVALID_POSITION;
             }
-            // The first track is at 0.
-            mPosition = 0;
-            return mPosition;
         }
-        // Increment the position and return it
-        mPosition++;
-        if (mPosition >= mFilenames.length) {
-            mPosition = 0;
-        }
+        // A random position from the list.
+        mPosition = (int)(Math.random() * (mFilenames.length + 1));
         return mPosition;
     }
 
