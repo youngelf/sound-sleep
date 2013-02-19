@@ -22,7 +22,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.util.Pair;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 
@@ -36,7 +38,7 @@ public class BabyActivity extends Activity {
     private int mWidth;
     private int mHeight;
     // Change clock location every ten minutes
-    private static final int DELAY = 10 * 60 * 1000;
+    private static final int DELAY = 4* 1000;
     // Initial delay to go to a random position is much shorter
     private static final int INITIAL_DELAY = 500;
 
@@ -44,6 +46,9 @@ public class BabyActivity extends Activity {
     private int mAlphaDecrement = 1;
 
     private final int sdk = Build.VERSION.SDK_INT;
+    private Pair<Integer, Integer> cloudSize = null;
+    private Pair<Integer, Integer> noteSize = null;
+
     /**
      * Changes the clock and the icon location and posts itself after a delay.
      */
@@ -62,14 +67,12 @@ public class BabyActivity extends Activity {
     private void changeClockLocation() {
         populateTopLevelDimen();
         final View v = findViewById(R.id.clock);
-        final int x = (int)(Math.random()*(mWidth - v.getWidth()));
-        final int y = (int)(Math.random()*(mHeight- v.getHeight()));
+        final int x = (int)(Math.random()*(mWidth - v.getMeasuredWidth()));
+        final int y = (int)(Math.random()*(mHeight- v.getMeasuredHeight()));
         if (sdk >= 12) {
             v.animate().x(x).y(y);
         } else {
-            // Figure out how to do this.
-//            v.setX(x);
-  //          v.setY(y);
+            v.setPadding(x, y, 0, 0);
         }
     }
 
@@ -85,32 +88,50 @@ public class BabyActivity extends Activity {
             final View topLevel = findViewById(R.id.toplevel);
             mHeight = topLevel.getBottom();
         }
+        if (cloudSize == null) {
+            final View cloud = findViewById(R.id.cloud);
+            cloudSize = new Pair<Integer, Integer>(cloud.getMeasuredWidth(), cloud.getMeasuredHeight());
+        }
+        if (noteSize == null) {
+            final View note = findViewById(R.id.note);
+            noteSize = new Pair<Integer, Integer>(note.getMeasuredWidth(), note.getMeasuredHeight());
+        }
     }
 
     /**
      * Moves the icons to some random location.
      */
     private void changeIconLocation() {
-        if (sdk < 11) {
-            // TODO(viki): Figure out how to do this.
-            return;
-        }
         populateTopLevelDimen();
         setGlobalScreenSettings();
-        final View cloud = findViewById(R.id.cloud);
-        final View note = findViewById(R.id.note);
+        if (cloudSize == null || noteSize == null) {
+            return;
+        }
         final double locationX = Math.random();
         // The top half of the screen is for the note.
-        note.setY(0);
+        final int noteY = 0;
         // The bottom half of the screen is for white noise.
-        cloud.setY(mHeight - cloud.getHeight());
+        final int cloudY = mHeight - cloudSize.second;
         // The cloud and the note mirror each other on opposite sides to
         // increase visual separation.
-        cloud.animate().x((int)(locationX * (mWidth - cloud.getWidth()))).alpha((float)(.35-(mAlphaDecrement/100.0)));
-        note.animate().x((int)((1-locationX) * (mWidth - note.getWidth()))).alpha((float)(.50-(mAlphaDecrement/100.0)));
+        final int cloudX = (int) (locationX * (mWidth - cloudSize.first));
+        final float newCloudAlpha = (float)(.35-(mAlphaDecrement/100.0));
+        final float newNoteAlpha = (float) (.50 - (mAlphaDecrement / 100.0));
+        final int noteX = (int) ((1 - locationX) * (mWidth - noteSize.first));
         mAlphaDecrement += 5;
         if (mAlphaDecrement > 20) {
             mAlphaDecrement = 20;
+        }
+        final View cloud = findViewById(R.id.cloud);
+        final View note = findViewById(R.id.note);
+        if (sdk >= 11) {
+            cloud.setY(cloudY);
+            cloud.animate().x(cloudX).alpha(newCloudAlpha);
+            note.setY(noteY);
+            note.animate().x(noteX).alpha(newNoteAlpha);
+        } else {
+            cloud.setPadding(cloudX, cloudY, 0, 0);
+            note.setPadding(noteX, noteY, 0, 0);
         }
     }
 

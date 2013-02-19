@@ -152,13 +152,18 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             // Fill the filename list and return the first position.
             mFilenames = getMusicList();
             Log.d(TAG, "All filenames: " + Arrays.toString(mFilenames));
+            // Still nothing? Go back with an invalid position.
             if (mFilenames.length <= 0) {
                 Log.e(TAG, "Baby music has no files.");
                 return INVALID_POSITION;
             }
         }
+        final int size = mFilenames.length;
         // A random position from the list.
-        mPosition = (int)(Math.random() * (mFilenames.length + 1));
+        mPosition = (int)(Math.random() * (size + 1));
+        if (mPosition < 0 || mPosition >= size) {
+            mPosition = 0;
+        }
         return mPosition;
     }
 
@@ -184,6 +189,11 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         return filenames;
     }
 
+    /**
+     * Returns the location of the baby music directory which is
+     * sdcard/music/babysong.
+     * @return
+     */
     private static File getBabyDir() {
         final String state = Environment.getExternalStorageState();
         if (!Environment.MEDIA_MOUNTED.equals(state)) {
