@@ -41,7 +41,7 @@ public class BabyActivity extends Activity {
     // When this is 10, we are at total alpha decrement, and 0, we are at minimum.
     private int mAlphaDecrement = 1;
 
-    private final int sdk = Build.VERSION.SDK_INT;
+    private final static int SDK = Build.VERSION.SDK_INT;
     private Pair<Integer, Integer> cloudSize = null;
     private Pair<Integer, Integer> noteSize = null;
 
@@ -65,7 +65,7 @@ public class BabyActivity extends Activity {
         final View v = findViewById(R.id.clock);
         final int x = (int)(Math.random()*(mWidth - v.getMeasuredWidth()));
         final int y = (int)(Math.random()*(mHeight- v.getMeasuredHeight()));
-        if (sdk >= 12) {
+        if (SDK >= 12) {
             v.animate().x(x).y(y);
         } else {
             v.setPadding(x, y, 0, 0);
@@ -120,7 +120,7 @@ public class BabyActivity extends Activity {
         }
         final View cloud = findViewById(R.id.cloud);
         final View note = findViewById(R.id.note);
-        if (sdk >= 11) {
+        if (SDK >= 11) {
             cloud.setY(cloudY);
             cloud.animate().x(cloudX).alpha(newCloudAlpha);
             note.setY(noteY);
@@ -135,7 +135,7 @@ public class BabyActivity extends Activity {
      * Sets the visibility of the icons back to full brightness.
      */
     void resetAlphaDecrement() {
-        if (sdk < 11) {
+        if (SDK < 11) {
             return;
         }
         mAlphaDecrement = 0;
@@ -149,7 +149,7 @@ public class BabyActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // Go full screen.
-        if (sdk >= 11) {
+        if (SDK >= 11) {
             (getActionBar()).hide();
         } else {
             requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -167,7 +167,7 @@ public class BabyActivity extends Activity {
     private void setGlobalScreenSettings() {
         final View topLevel = findViewById(R.id.toplevel);
         // Hide the System status bar
-        if (sdk >= 11) {
+        if (SDK >= 11) {
             topLevel.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
         }
         // Keep the screen always on, irrespective of power state.

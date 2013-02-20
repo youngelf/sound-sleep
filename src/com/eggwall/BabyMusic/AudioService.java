@@ -17,8 +17,10 @@
 package com.eggwall.BabyMusic;
 
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetFileDescriptor;
 import android.media.MediaPlayer;
@@ -54,6 +56,8 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     /** Single instance of random number generator */
     private final Random mRandom = new Random();
+    /** The SDK version */
+    private final static int SDK = Build.VERSION.SDK_INT;
 
     /** The object that actually plays the music on our behalf. */
     private MediaPlayer mPlayer;
@@ -114,7 +118,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             // Try to open the SD card and read from there. If nothing is found, play the
             // default music.
             nextPosition = nextTrackFromCard();
-            if (nextPosition == -1) {
+            if (nextPosition == INVALID_POSITION) {
                 Log.v(TAG, "No SD card music found, playing default music");
                 resourceToPlay = R.raw.all_of_me;
             } else {
@@ -163,7 +167,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
                 return INVALID_POSITION;
             }
         }
-        return mRandom.nextInt(mFilenames.length + 1);
+        return mRandom.nextInt(mFilenames.length);
     }
 
     /**
@@ -201,7 +205,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             return null;
         }
         final File rootSdLocation;
-        if (Build.VERSION.SDK_INT >= 8) {
+        if (SDK >= 8) {
             rootSdLocation = getBabyDirAfterV8();
         } else {
             rootSdLocation = getBabyDirTillV7();
@@ -241,6 +245,16 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      * happening correctly right now.
      */
     private void setForegroundService() {
+        if (SDK >= 11) {
+            final Notification n = new Notification.Builder(this)
+                    .setContentTitle("Playing music")
+                    .setSmallIcon(R.drawable.ic_launcher)
+                    .setOngoing(true)
+                    .build();
+            final NotificationManager m = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            m.notify(0, n);
+            return;
+        }
         final PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
                 new Intent(getApplicationContext(), BabyActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
         final Notification notification = new Notification();
@@ -263,6 +277,9 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     @Override
     public void onDestroy() {
+        // Get rid of our notification
+        final NotificationManager m = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        m.cancel(0);
         Log.v(TAG, "bye bye");
         releasePlayer();
         super.onDestroy();
