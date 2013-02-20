@@ -168,7 +168,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     /**
      * Returns the names of all the music files available to the user.
-     * @return
+     * @return list of all the files in the baby music directory.
      */
     private String[] getMusicList() {
         if (mBabyDir == null) {
@@ -191,7 +191,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     /**
      * Returns the location of the baby music directory which is
      * sdcard/music/babysong.
-     * @return
+     * @return the file representing the baby music directory.
      */
     private static File getBabyDir() {
         final String state = Environment.getExternalStorageState();
@@ -222,7 +222,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     /**
      * sdcard/music in SDK >= 8
-     * @return
+     * @return the sdcard/music path in sdk version >= 8
      */
     private static File getBabyDirAfterV8() {
         return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
@@ -230,7 +230,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     /**
      * sdcard/music in SDK < 8
-     * @return
+     * @return the sdcard/music path in sdk version < 8
      */
     private static File getBabyDirTillV7() {
         return new File(Environment.getExternalStorageDirectory(), Environment.DIRECTORY_MUSIC);

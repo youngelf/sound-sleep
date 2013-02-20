@@ -21,10 +21,8 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 import android.util.Pair;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 
@@ -32,8 +30,6 @@ import android.view.WindowManager;
  * Activity that allows playing music or white noise while showing a big clock.
  */
 public class BabyActivity extends Activity {
-    /** For logging */
-    private static final String TAG = "BabyActivity";
     private final Handler mHandler = new Handler();
     private int mWidth;
     private int mHeight;
