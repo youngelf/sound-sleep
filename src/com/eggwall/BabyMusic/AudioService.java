@@ -53,7 +53,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     private final static String BABY_MUSIC_DIR = "babysong";
 
     /** Single instance of random number generator */
-    private final Random random = new Random();
+    private final Random mRandom = new Random();
 
     /** The object that actually plays the music on our behalf. */
     private MediaPlayer mPlayer;
@@ -163,7 +163,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
                 return INVALID_POSITION;
             }
         }
-        return random.nextInt(mFilenames.length + 1);
+        return mRandom.nextInt(mFilenames.length + 1);
     }
 
     /**
