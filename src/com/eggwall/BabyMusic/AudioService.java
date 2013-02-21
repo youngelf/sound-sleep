@@ -16,7 +16,6 @@
 
 package com.eggwall.BabyMusic;
 
-import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -28,7 +27,6 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
 import android.os.PowerManager;
-//import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
@@ -265,7 +263,6 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
                 .setOngoing(true);
         builder.setContentIntent(pending);
         mNotificationManager.notify(NOTIFICATION_ID, builder.build());
-        return;
     }
 
     /**
