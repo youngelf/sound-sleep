@@ -16,6 +16,7 @@
 
 package com.eggwall.BabyMusic;
 
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -92,11 +93,11 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         if (mTypePlaying == typeOfResource || typeOfResource == SILENCE) {
             // Pressing the same button twice is an instruction to stop playing this music.
             mTypePlaying = SILENCE;
-            removeNotification();
-        } else {
-            // Switch to the other type of music
-            mTypePlaying = typeOfResource;
+            stopSelf();
+            return 0;
         }
+        // Switch to the other type of music
+        mTypePlaying = typeOfResource;
         releasePlayer();
         play(mTypePlaying);
         return 0;
@@ -257,12 +258,21 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     private void setForegroundService() {
         final Intent startBabyActivity = new Intent(this, BabyActivity.class);
         final PendingIntent pending = PendingIntent.getActivity(this, 0, startBabyActivity, PendingIntent.FLAG_UPDATE_CURRENT);
-        final NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
+        if (SDK >= 11) {
+        final Notification.Builder builder = new Notification.Builder(this)
                 .setContentTitle("Playing music")
                 .setSmallIcon(R.drawable.ic_launcher)
                 .setOngoing(true);
         builder.setContentIntent(pending);
         mNotificationManager.notify(NOTIFICATION_ID, builder.build());
+        } else {
+            final NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
+                    .setContentTitle("Playing music")
+                    .setSmallIcon(R.drawable.ic_launcher)
+                    .setOngoing(true);
+            builder.setContentIntent(pending);
+            mNotificationManager.notify(NOTIFICATION_ID, builder.build());
+        }
     }
 
     /**
@@ -286,10 +296,10 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     @Override
     public void onDestroy() {
-        removeNotification();
-        super.onDestroy();
         Log.v(TAG, "bye bye");
+        removeNotification();
         releasePlayer();
+        super.onDestroy();
     }
 
     @Override
