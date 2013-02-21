@@ -29,6 +29,7 @@ import android.os.Environment;
 import android.os.IBinder;
 import android.os.PowerManager;
 //import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import java.io.File;
@@ -256,24 +257,15 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      * happening correctly right now.
      */
     private void setForegroundService() {
-        if (SDK >= 11) {
-            final Intent startBabyActivity = new Intent(this, BabyActivity.class);
-            final PendingIntent pending = PendingIntent.getActivity(this, 0, startBabyActivity, PendingIntent.FLAG_UPDATE_CURRENT);
-            final Notification.Builder n = new Notification.Builder(this)
-                    .setContentTitle("Playing music")
-                    .setSmallIcon(R.drawable.ic_launcher)
-                    .setOngoing(true);
-            n.setContentIntent(pending);
-            mNotificationManager.notify(NOTIFICATION_ID, n.build());
-            return;
-        }
-        final PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
-                new Intent(getApplicationContext(), BabyActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
-        final Notification notification = new Notification();
-        notification.tickerText = "Baby Music";
-        notification.icon = R.drawable.ic_launcher;
-        notification.flags |= Notification.FLAG_ONGOING_EVENT;
-        notification.setLatestEventInfo(getApplicationContext(), "BabyMusic", "Playing", pi);
+        final Intent startBabyActivity = new Intent(this, BabyActivity.class);
+        final PendingIntent pending = PendingIntent.getActivity(this, 0, startBabyActivity, PendingIntent.FLAG_UPDATE_CURRENT);
+        final NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
+                .setContentTitle("Playing music")
+                .setSmallIcon(R.drawable.ic_launcher)
+                .setOngoing(true);
+        builder.setContentIntent(pending);
+        mNotificationManager.notify(NOTIFICATION_ID, builder.build());
+        return;
     }
 
     /**
