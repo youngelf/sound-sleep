@@ -28,9 +28,12 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
 import android.os.PowerManager;
+//import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileDescriptor;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -67,6 +70,8 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     private File mBabyDir;
     /** Names of all the songs */
     private String[] mFilenames;
+    /** The global manager for notifications */
+    private NotificationManager mNotificationManager;
 
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
@@ -78,11 +83,15 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (mNotificationManager == null) {
+            mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        }
         // If we don't get an extra (impossible), play white noise.
         final int typeOfResource = intent.getIntExtra("type", WHITE_NOISE);
         if (mTypePlaying == typeOfResource || typeOfResource == SILENCE) {
             // Pressing the same button twice is an instruction to stop playing this music.
             mTypePlaying = SILENCE;
+            removeNotification();
         } else {
             // Switch to the other type of music
             mTypePlaying = typeOfResource;
@@ -246,13 +255,14 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      */
     private void setForegroundService() {
         if (SDK >= 11) {
-            final Notification n = new Notification.Builder(this)
+            final Intent startBabyActivity = new Intent(this, BabyActivity.class);
+            final PendingIntent pending = PendingIntent.getActivity(this, 0, startBabyActivity, PendingIntent.FLAG_UPDATE_CURRENT);
+            final Notification.Builder n = new Notification.Builder(this)
                     .setContentTitle("Playing music")
                     .setSmallIcon(R.drawable.ic_launcher)
-                    .setOngoing(true)
-                    .build();
-            final NotificationManager m = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            m.notify(0, n);
+                    .setOngoing(true);
+            n.setContentIntent(pending);
+            mNotificationManager.notify(0, n.build());
             return;
         }
         final PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
@@ -275,14 +285,20 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         }
     }
 
+    /**
+     * Remove the persistent notification.
+     */
+    private void removeNotification() {
+        // Get rid of our notification
+        mNotificationManager.cancel(0);
+    }
+
     @Override
     public void onDestroy() {
-        // Get rid of our notification
-        final NotificationManager m = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        m.cancel(0);
+        removeNotification();
+        super.onDestroy();
         Log.v(TAG, "bye bye");
         releasePlayer();
-        super.onDestroy();
     }
 
     @Override
