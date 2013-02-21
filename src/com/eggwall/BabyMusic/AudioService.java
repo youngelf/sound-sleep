@@ -56,6 +56,8 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     private static final int INVALID_POSITION = -1;
     /** Name of the directory in the main folder containing baby music */
     private final static String BABY_MUSIC_DIR = "babysong";
+    /** The ID for the global notification we post. */
+    private final static int NOTIFICATION_ID = 0;
 
     /** Single instance of random number generator */
     private final Random mRandom = new Random();
@@ -262,7 +264,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
                     .setSmallIcon(R.drawable.ic_launcher)
                     .setOngoing(true);
             n.setContentIntent(pending);
-            mNotificationManager.notify(0, n.build());
+            mNotificationManager.notify(NOTIFICATION_ID, n.build());
             return;
         }
         final PendingIntent pi = PendingIntent.getActivity(getApplicationContext(), 0,
@@ -290,7 +292,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      */
     private void removeNotification() {
         // Get rid of our notification
-        mNotificationManager.cancel(0);
+        mNotificationManager.cancel(NOTIFICATION_ID);
     }
 
     @Override
