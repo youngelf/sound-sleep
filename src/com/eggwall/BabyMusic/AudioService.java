@@ -259,12 +259,12 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         final Intent startBabyActivity = new Intent(this, BabyActivity.class);
         final PendingIntent pending = PendingIntent.getActivity(this, 0, startBabyActivity, PendingIntent.FLAG_UPDATE_CURRENT);
         if (SDK >= 11) {
-        final Notification.Builder builder = new Notification.Builder(this)
-                .setContentTitle("Playing music")
-                .setSmallIcon(R.drawable.ic_launcher)
-                .setOngoing(true);
-        builder.setContentIntent(pending);
-        mNotificationManager.notify(NOTIFICATION_ID, builder.build());
+            final Notification.Builder builder = new Notification.Builder(this)
+                    .setContentTitle("Playing music")
+                    .setSmallIcon(R.drawable.ic_launcher)
+                    .setOngoing(true);
+            builder.setContentIntent(pending);
+            mNotificationManager.notify(NOTIFICATION_ID, builder.build());
         } else {
             final NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
                     .setContentTitle("Playing music")
