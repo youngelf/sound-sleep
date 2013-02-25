@@ -34,7 +34,7 @@ public class BabyActivity extends Activity {
     private int mWidth;
     private int mHeight;
     // Change clock location every ten minutes
-    private static final int DELAY = 4* 1000;
+    private static final int DELAY = 10 * 60 * 1000;
     // Initial delay to go to a random position is much shorter
     private static final int INITIAL_DELAY = 500;
 
