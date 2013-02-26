@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-package com.eggwall.BabyMusic;
+package com.eggwall.SoundSleep;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -29,7 +29,7 @@ import android.view.WindowManager;
 /**
  * Activity that allows playing music or white noise while showing a big clock.
  */
-public class BabyActivity extends Activity {
+public class SleepActivity extends Activity {
     private final Handler mHandler = new Handler();
     private int mWidth;
     private int mHeight;

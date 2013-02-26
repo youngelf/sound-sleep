@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-package com.eggwall.BabyMusic;
+package com.eggwall.SoundSleep;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -29,6 +29,7 @@ import android.os.Environment;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.v4.app.NotificationCompat;
+
 import android.util.Log;
 
 import java.io.File;
@@ -54,8 +55,8 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     /** This represents in invalid position in the list and also an invalid resource. */
     private static final int INVALID_POSITION = -1;
-    /** Name of the directory in the main folder containing baby music */
-    private final static String BABY_MUSIC_DIR = "babysong";
+    /** Name of the directory in the main folder containing sleeping music */
+    private final static String MUSIC_DIR = "sleeping";
     /** The ID for the global notification we post. */
     private final static int NOTIFICATION_ID = 0;
 
@@ -69,7 +70,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     /** Set to MUSIC or WHITE_NOISE */
     private int mTypePlaying = 0;
     /** The actual directory that corresponds to the external SD card. */
-    private File mBabyDir;
+    private File mMusicDir;
     /** Names of all the songs */
     private String[] mFilenames;
     /** The global manager for notifications */
@@ -78,7 +79,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
         releasePlayer();
-        Log.e(TAG, "BabyMusic.AudioService encountered onError");
+        Log.e(TAG, "SleepActivity.AudioService encountered onError");
         // Propagate the error up.
         return false;
     }
@@ -139,7 +140,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         try {
             if (resourceToPlay == INVALID_POSITION) {
                 // Play files, not resources. Play the music file given here.
-                final String file = mBabyDir.getAbsolutePath() + File.separator + mFilenames[nextPosition];
+                final String file = mMusicDir.getAbsolutePath() + File.separator + mFilenames[nextPosition];
                 Log.d(TAG, "Now playing " + file);
                 mPlayer.setDataSource(file);
                 mPlayer.setOnCompletionListener(this);
@@ -174,7 +175,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             Log.d(TAG, "All filenames: " + Arrays.toString(mFilenames));
             // Still nothing? Go back with an invalid position.
             if (mFilenames.length <= 0) {
-                Log.e(TAG, "Baby music has no files.");
+                Log.e(TAG, "Music directory has no files.");
                 return INVALID_POSITION;
             }
         }
@@ -183,32 +184,32 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     /**
      * Returns the names of all the music files available to the user.
-     * @return list of all the files in the baby music directory.
+     * @return list of all the files in the music directory.
      */
     private String[] getMusicList() {
-        if (mBabyDir == null) {
-            mBabyDir = getBabyDir();
+        if (mMusicDir == null) {
+            mMusicDir = getMusicDir();
         }
-        // Still nothing? We don't have a valid baby music directory.
-        if (mBabyDir == null) {
+        // Still nothing? We don't have a valid music directory.
+        if (mMusicDir == null) {
             return new String[0];
         }
         final String[] noFiles = new String[0];
-        final String[] filenames = mBabyDir.list();
+        final String[] filenames = mMusicDir.list();
         Log.e(TAG, "All filenames: " + Arrays.toString(filenames));
         if (filenames.length <= 0) {
-            Log.e(TAG, "Baby music has no files." + mBabyDir);
+            Log.e(TAG, "Music directory has no files." + mMusicDir);
             return noFiles;
         }
         return filenames;
     }
 
     /**
-     * Returns the location of the baby music directory which is
-     * sdcard/music/babysong.
-     * @return the file representing the baby music directory.
+     * Returns the location of the music directory which is
+     * [sdcard]/music/sleeping.
+     * @return the file representing the music directory.
      */
-    private static File getBabyDir() {
+    private static File getMusicDir() {
         final String state = Environment.getExternalStorageState();
         if (!Environment.MEDIA_MOUNTED.equals(state)) {
             // If we don't have an SD card, cannot do anything here.
@@ -217,37 +218,37 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         }
         final File rootSdLocation;
         if (SDK >= 8) {
-            rootSdLocation = getBabyDirAfterV8();
+            rootSdLocation = getMusicDirAfterV8();
         } else {
-            rootSdLocation = getBabyDirTillV7();
+            rootSdLocation = getMusicDirTillV7();
         }
         if (rootSdLocation == null) {
             // Not a directory? Completely unexpected.
             Log.e(TAG, "SD card root directory is NOT a directory: " + rootSdLocation);
             return null;
         }
-        // Navigate over to the baby music directory.
-        final File babyMusicDir = new File(rootSdLocation, BABY_MUSIC_DIR);
-        if (!babyMusicDir.isDirectory()) {
-            Log.e(TAG, "Baby music directory does not exist." + rootSdLocation);
+        // Navigate over to the music directory.
+        final File musicDir = new File(rootSdLocation, MUSIC_DIR);
+        if (!musicDir.isDirectory()) {
+            Log.e(TAG, "Music directory does not exist." + rootSdLocation);
             return null;
         }
-        return babyMusicDir;
+        return musicDir;
     }
 
     /**
-     * sdcard/music in SDK >= 8
-     * @return the sdcard/music path in sdk version >= 8
+     * [sdcard]/music in SDK >= 8
+     * @return the [sdcard]/music path in sdk version >= 8
      */
-    private static File getBabyDirAfterV8() {
+    private static File getMusicDirAfterV8() {
         return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
     }
 
     /**
-     * sdcard/music in SDK < 8
-     * @return the sdcard/music path in sdk version < 8
+     * [sdcard]/music in SDK < 8
+     * @return the [sdcard]/music path in sdk version < 8
      */
-    private static File getBabyDirTillV7() {
+    private static File getMusicDirTillV7() {
         return new File(Environment.getExternalStorageDirectory(), Environment.DIRECTORY_MUSIC);
     }
 
@@ -256,8 +257,8 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      * happening correctly right now.
      */
     private void setForegroundService() {
-        final Intent startBabyActivity = new Intent(this, BabyActivity.class);
-        final PendingIntent pending = PendingIntent.getActivity(this, 0, startBabyActivity, PendingIntent.FLAG_UPDATE_CURRENT);
+        final Intent showClock = new Intent(this, SleepActivity.class);
+        final PendingIntent pending = PendingIntent.getActivity(this, 0, showClock, PendingIntent.FLAG_UPDATE_CURRENT);
         if (SDK >= 11) {
             final Notification.Builder builder = new Notification.Builder(this)
                     .setContentTitle("Playing music")

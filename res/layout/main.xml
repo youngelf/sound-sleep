@@ -42,7 +42,8 @@
                android:src="@drawable/music"
                android:id="@+id/note"/>
     <!--Show a clock always with h:mm even in 24 hour mode. -->
-    <com.eggwall.BabyMusic.TextClock android:layout_width="wrap_content"
+    <com.eggwall.SoundSleep.TextClock
+            android:layout_width="wrap_content"
                android:layout_height="wrap_content"
                android:id="@+id/clock"
                android:background="@color/blackSemiTransparent"

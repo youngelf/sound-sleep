@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-package com.eggwall.BabyMusic;
+package com.eggwall.SoundSleep;
 
 import android.content.*;
-import android.content.res.TypedArray;
 import android.os.SystemClock;
-import android.provider.Settings;
 import android.text.format.DateFormat;
 import android.util.AttributeSet;
 import android.widget.TextView;
