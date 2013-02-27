@@ -17,14 +17,17 @@
 package com.eggwall.SoundSleep;
 
 import android.app.Activity;
-import android.content.Intent;
+import android.content.*;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Pair;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 
 /**
  * Activity that allows playing music or white noise while showing a big clock.
@@ -44,6 +47,41 @@ public class SleepActivity extends Activity {
     private final static int SDK = Build.VERSION.SDK_INT;
     private Pair<Integer, Integer> cloudSize = null;
     private Pair<Integer, Integer> noteSize = null;
+
+    /** The state the application is currently in. */
+    private int mState = AudioService.SILENCE;
+    /** Key to store {@link #mState} in a bundle. */
+    private static String STATE_KEY = "state-key";
+
+    private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            final int message = AudioService.messageToType.get(action);
+            mState = message;
+            setIconFromState(mState);
+            return;
+        }
+    };
+
+    private void setIconFromState(int state) {
+        final ImageView cloud = (ImageView) findViewById(R.id.cloud);
+        final ImageView note = (ImageView) findViewById(R.id.note);
+        switch (state) {
+            case AudioService.MUSIC:
+                cloud.setImageResource(R.drawable.rain);
+                note.setImageResource(R.drawable.stop_music);
+                break;
+            case AudioService.WHITE_NOISE:
+                note.setImageResource(R.drawable.music);
+                cloud.setImageResource(R.drawable.stop_rain);
+                break;
+            case AudioService.SILENCE:
+                cloud.setImageResource(R.drawable.rain);
+                note.setImageResource(R.drawable.music);
+                break;
+        }
+    }
 
     /**
      * Changes the clock and the icon location and posts itself after a delay.
@@ -131,6 +169,12 @@ public class SleepActivity extends Activity {
         }
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putInt(STATE_KEY, mState);
+        super.onSaveInstanceState(outState);
+    }
+
     /**
      * Sets the visibility of the icons back to full brightness.
      */
@@ -143,6 +187,13 @@ public class SleepActivity extends Activity {
         final View note = findViewById(R.id.note);
         cloud.animate().alpha((float) .35);
         note.animate().alpha((float) .50);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        final LocalBroadcastManager m = LocalBroadcastManager.getInstance(this);
+        m.unregisterReceiver(mMessageReceiver);
     }
 
     @Override
@@ -159,6 +210,17 @@ public class SleepActivity extends Activity {
         setContentView(R.layout.main);
         postClockChange(INITIAL_DELAY);
         setGlobalScreenSettings();
+        final LocalBroadcastManager m = LocalBroadcastManager.getInstance(this);
+        final IntentFilter filter = new IntentFilter();
+        filter.addAction(AudioService.MESSAGE_SILENCE);
+        filter.addAction(AudioService.MESSAGE_MUSIC);
+        filter.addAction(AudioService.MESSAGE_WHITE_NOISE);
+        m.registerReceiver(mMessageReceiver, filter);
+
+        if (savedInstanceState != null) {
+            mState = savedInstanceState.getInt(STATE_KEY, AudioService.SILENCE);
+        }
+        setIconFromState(mState);
     }
 
     /**

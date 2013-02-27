@@ -33,13 +33,11 @@
                android:layout_height="wrap_content"
                android:alpha="0.5"
                android:contentDescription="@string/cloudDesc"
-               android:src="@drawable/rain"
                android:id="@+id/cloud"/>
     <ImageView android:layout_width="wrap_content"
                android:layout_height="wrap_content"
                android:contentDescription="@string/noteDesc"
                android:alpha="0.35"
-               android:src="@drawable/music"
                android:id="@+id/note"/>
     <!--Show a clock always with h:mm even in 24 hour mode. -->
     <com.eggwall.SoundSleep.TextClock

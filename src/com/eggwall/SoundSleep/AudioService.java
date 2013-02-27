@@ -30,12 +30,14 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.v4.app.NotificationCompat;
 
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Random;
 
 /**
@@ -48,10 +50,29 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     public static final String TYPE = "type";
     /** Stop playing any audio. */
     public static final int SILENCE = 0;
+    /** Broadcast message that says were were successful in starting silence. */
+    public static final String MESSAGE_SILENCE = "com.eggwall.SoundSleep.message.silence";
+
     /** Play music from the SD card */
     public static final int MUSIC = 1;
+    /** Broadcast message that says were were successful in starting music. */
+    public static final String MESSAGE_MUSIC = "com.eggwall.SoundSleep.message.music";
+
     /** Play standard white noise file (included in the application */
     public static final int WHITE_NOISE = 2;
+    /** Broadcast message that says were were successful in starting white noise. */
+    public static final String MESSAGE_WHITE_NOISE = "com.eggwall.SoundSleep.message.white-noise";
+
+    /** Map to perform type -> message lookups */
+    public static final String[] typeToMessage = {
+            MESSAGE_SILENCE, MESSAGE_MUSIC, MESSAGE_WHITE_NOISE
+    };
+    public static final HashMap <String, Integer> messageToType = new HashMap<String, Integer>(3);
+    static {
+        messageToType.put(MESSAGE_SILENCE, SILENCE);
+        messageToType.put(MESSAGE_MUSIC, MUSIC);
+        messageToType.put(MESSAGE_WHITE_NOISE, WHITE_NOISE);
+    }
 
     /** This represents in invalid position in the list and also an invalid resource. */
     private static final int INVALID_POSITION = -1;
@@ -100,11 +121,19 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         // Switch to the other type of music
         mTypePlaying = typeOfResource;
         releasePlayer();
-        // If we expect silence, nothing more to do here.
-        if (mTypePlaying != SILENCE) {
-            play(mTypePlaying);
-        }
+        play(mTypePlaying);
         return 0;
+    }
+
+    /**
+     * Posts a message back to the activity that it was successful in either playing music, in playing white
+     * noise, or becoming silent.
+     */
+    private void postSuccessMessage(int actionSuccessful) {
+        final Intent i = new Intent();
+        i.setAction(typeToMessage[actionSuccessful]);
+        LocalBroadcastManager m = LocalBroadcastManager.getInstance(this);
+        m.sendBroadcast(i);
     }
 
     /**
@@ -149,6 +178,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             e.printStackTrace();
             return;
         }
+        postSuccessMessage(mTypePlaying);
         mPlayer.prepareAsync();
     }
 
@@ -330,6 +360,8 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         Log.v(TAG, "bye bye");
         removeNotification();
         releasePlayer();
+        // Indicate that the service is quitting.
+        postSuccessMessage(SILENCE);
         super.onDestroy();
     }
 
@@ -341,6 +373,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     @Override
     public void onPrepared(MediaPlayer mp) {
         setForegroundService();
+        postSuccessMessage(mTypePlaying);
         mPlayer.start();
     }
 
