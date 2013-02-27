@@ -184,7 +184,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     /**
      * Create a media player with the standard configuration both for white noise and music.
-     * @return
+     * @return a generic Media player suitable for this application.
      */
     private MediaPlayer getGenericMediaPlayer() {
         final MediaPlayer player = new MediaPlayer();

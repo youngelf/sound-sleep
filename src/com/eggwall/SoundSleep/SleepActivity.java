@@ -26,7 +26,6 @@ import android.util.Pair;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 
 /**
@@ -57,10 +56,8 @@ public class SleepActivity extends Activity {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
-            final int message = AudioService.messageToType.get(action);
-            mState = message;
+            mState = AudioService.messageToType.get(action);
             setIconFromState(mState);
-            return;
         }
     };
 
