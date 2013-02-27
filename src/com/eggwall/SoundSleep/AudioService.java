@@ -100,7 +100,10 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         // Switch to the other type of music
         mTypePlaying = typeOfResource;
         releasePlayer();
-        play(mTypePlaying);
+        // If we expect silence, nothing more to do here.
+        if (mTypePlaying != SILENCE) {
+            play(mTypePlaying);
+        }
         return 0;
     }
 
@@ -111,57 +114,83 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      *             is a signal to stop playing music altogether.
      */
     private void play(int type) {
-        if (type == SILENCE) {
-            // Nothing to do here. Just quit
-            Log.v(TAG, "Stopping the music");
-            return;
-        }
-        mPlayer = new MediaPlayer();
-        // Keep the CPU awake while playing music.
-        mPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
-        mPlayer.setOnPreparedListener(this);
-        final int resourceToPlay;
-        final int nextPosition;
-        if (type == WHITE_NOISE) {
-            Log.v(TAG, "Playing browninan noise");
-            resourceToPlay = R.raw.noise;
-            nextPosition = INVALID_POSITION;
-        } else {
-            // Try to open the SD card and read from there. If nothing is found, play the
-            // default music.
-            nextPosition = nextTrackFromCard();
-            if (nextPosition == INVALID_POSITION) {
-                Log.v(TAG, "No SD card music found, playing default music");
-                resourceToPlay = R.raw.all_of_me;
-            } else {
-                resourceToPlay = INVALID_POSITION;
+        if (type == MUSIC) {
+            final MediaPlayer player = tryStartingMusic();
+            if (player != null) {
+                mPlayer = player;
+                mPlayer.prepareAsync();
+                // onPrepared will get called when the media player is ready to play.
+                return;
             }
+        }
+        // Either we weren't able to play custom music, or we were asked to play white noise.
+        final int resourceToPlay;
+        if (type == WHITE_NOISE) {
+            Log.v(TAG, "Playing browninan noise.");
+            resourceToPlay = R.raw.noise;
+        } else {
+            Log.v(TAG, "Playing all of me.");
+            resourceToPlay = R.raw.all_of_me;
         }
         try {
-            if (resourceToPlay == INVALID_POSITION) {
-                // Play files, not resources. Play the music file given here.
-                final String file = mMusicDir.getAbsolutePath() + File.separator + mFilenames[nextPosition];
-                Log.d(TAG, "Now playing " + file);
-                mPlayer.setDataSource(file);
-                mPlayer.setOnCompletionListener(this);
-                // Play this song, and a different one.
-                mPlayer.setLooping(false);
-            } else {
-                final AssetFileDescriptor d = getResources().openRawResourceFd(resourceToPlay);
-                if (d == null) {
-                    Log.wtf(TAG, "Could not open the file to play");
-                    return;
-                }
-                final FileDescriptor fd = d.getFileDescriptor();
-                mPlayer.setDataSource(fd, d.getStartOffset(), d.getLength());
-                d.close();
-                // White noise or the default song is looped forever.
-                mPlayer.setLooping(true);
+            final AssetFileDescriptor d = getResources().openRawResourceFd(resourceToPlay);
+            if (d == null) {
+                Log.wtf(TAG, "Could not open the file to play");
+                return;
             }
+            final FileDescriptor fd = d.getFileDescriptor();
+            mPlayer = getGenericMediaPlayer();
+            mPlayer.setDataSource(fd, d.getStartOffset(), d.getLength());
+            d.close();
+            // White noise or the default song is looped forever.
+            mPlayer.setLooping(true);
         } catch (IOException e) {
+            Log.e(TAG, "Could not create a media player instance. Full error below.");
             e.printStackTrace();
+            return;
         }
         mPlayer.prepareAsync();
+    }
+
+    /**
+     * Create a media player with the standard configuration both for white noise and music.
+     * @return
+     */
+    private MediaPlayer getGenericMediaPlayer() {
+        final MediaPlayer player = new MediaPlayer();
+        // Keep the CPU awake while playing music.
+        player.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+        player.setOnPreparedListener(this);
+        return player;
+    }
+
+    /**
+     * Try getting music from the [sdcard]/music/sleeping
+     * @return a valid media player if we can play from it. Returns null if we didn't find music, or we can't play
+     * custom music for any reason.
+     */
+    private MediaPlayer tryStartingMusic() {
+        final MediaPlayer player = getGenericMediaPlayer();
+        // Try to open the SD card and read from there. If nothing is found, play the
+        // default music.
+        final int nextPosition = nextTrackFromCard();
+        if (nextPosition == INVALID_POSITION) {
+            return null;
+        }
+        // Play files, not resources. Play the music file given here.
+        final String file = mMusicDir.getAbsolutePath() + File.separator + mFilenames[nextPosition];
+        Log.d(TAG, "Now playing " + file);
+        try {
+            player.setDataSource(file);
+        } catch (IOException e) {
+            Log.e(TAG, "Could not create a media player instance. Full error below.");
+            e.printStackTrace();
+            return null;
+        }
+        player.setOnCompletionListener(this);
+        // Play this song, and a different one when done.
+        player.setLooping(false);
+        return player;
     }
 
     /**
@@ -190,16 +219,17 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         if (mMusicDir == null) {
             mMusicDir = getMusicDir();
         }
+        // What we return when we don't find anything. It is safer to return a zero length array than null.
+        final String[] foundNothing = new String[0];
         // Still nothing? We don't have a valid music directory.
         if (mMusicDir == null) {
-            return new String[0];
+            return foundNothing;
         }
-        final String[] noFiles = new String[0];
         final String[] filenames = mMusicDir.list();
         Log.e(TAG, "All filenames: " + Arrays.toString(filenames));
         if (filenames.length <= 0) {
             Log.e(TAG, "Music directory has no files." + mMusicDir);
-            return noFiles;
+            return foundNothing;
         }
         return filenames;
     }
@@ -318,7 +348,9 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     public void onCompletion(MediaPlayer mp) {
         // This method is only called for songs, since white noise is on endless loop, and will never get this event.
         releasePlayer();
-        // Play the next song.
-        play(mTypePlaying);
+        // Play the next song.  Should only be called for mTypePlaying == MUSIC
+        if (mTypePlaying == MUSIC) {
+            play(mTypePlaying);
+        }
     }
 }
