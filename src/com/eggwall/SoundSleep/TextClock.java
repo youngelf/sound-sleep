@@ -52,6 +52,7 @@ public class TextClock extends TextView {
         createTime(null);
     }
 
+    /** Receive changes to timezone and change our clock accordingly */
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -63,16 +64,23 @@ public class TextClock extends TextView {
         }
     };
 
+    /**
+     * Runnable to change time every minute.
+     */
     private final Runnable mTicker = new Runnable() {
         public void run() {
             onTimeChanged();
-            final long now = SystemClock.uptimeMillis();
-            final long next = now + (1000 - now % 1000);
+            // Wait a minute
+            final long next = SystemClock.uptimeMillis() + (60 * 1000);
             getHandler().postAtTime(mTicker, next);
         }
     };
 
-
+    /**
+     * Initialize our time object to the current or default time zone
+     * @param timeZone either a time zone specified in {@link TimeZone#getTimeZone(String)} or null to get the default
+     *                 locale.
+     */
     private void createTime(String timeZone) {
         if (timeZone != null) {
             mTime = Calendar.getInstance(TimeZone.getTimeZone(timeZone));
@@ -81,6 +89,9 @@ public class TextClock extends TextView {
         }
     }
 
+    /**
+     * Set the current view's time to the system time.
+     */
     private void onTimeChanged() {
         mTime.setTimeInMillis(System.currentTimeMillis());
         setText(DateFormat.format(FORMAT, mTime));
@@ -97,8 +108,6 @@ public class TextClock extends TextView {
      *
      * @see java.util.TimeZone#getAvailableIDs()
      * @see TimeZone#getTimeZone(String)
-     *
-     * @attr ref android.R.styleable#TextClock_timeZone
      */
     public void setTimeZone(String timeZone) {
         mTimeZone = timeZone;

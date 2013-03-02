@@ -32,19 +32,25 @@ import android.widget.ImageView;
  * Activity that allows playing music or white noise while showing a big clock.
  */
 public class SleepActivity extends Activity {
+    /** Handler associated with the main thread for posting runnables. */
     private final Handler mHandler = new Handler();
+    /** The width of our entire window. */
     private int mWidth;
+    /** The height of our entire window*/
     private int mHeight;
-    // Change clock location every ten minutes
+    /** Delay which adjusts ongoing clock and icon location changes. */
     private static final int DELAY = 10 * 60 * 1000;
-    // Initial delay to go to a random position is much shorter
+    /** Initial delay to change clock and icon location immediately after application startup. */
     private static final int INITIAL_DELAY = 500;
 
-    // When this is 10, we are at total alpha decrement, and 0, we are at minimum.
+    /** Counts up to 10, to make the icons maximally dark. At 0, icons are at maximal brightness. */
     private int mAlphaDecrement = 1;
 
+    /** The SDK version, stored off because we read it everywhere. */
     private final static int SDK = Build.VERSION.SDK_INT;
+    /** The width, height of the cloud icon. */
     private Pair<Integer, Integer> cloudSize = null;
+    /** The width, height of the musical note icon. */
     private Pair<Integer, Integer> noteSize = null;
 
     /** The state the application is currently in. */
@@ -52,6 +58,7 @@ public class SleepActivity extends Activity {
     /** Key to store {@link #mState} in a bundle. */
     private static String STATE_KEY = "state-key";
 
+    /** Receiver that accepts local broadcasts from the service to update the UI. */
     private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -61,6 +68,11 @@ public class SleepActivity extends Activity {
         }
     };
 
+    /**
+     * Sets the icons from the current AudioService state.
+     * @param state an integer: {@link AudioService#MUSIC}, {@link AudioService#WHITE_NOISE}, or
+     *              {@link AudioService#SILENCE} which determines what the {@link AudioService} is currently doing.
+     */
     private void setIconFromState(int state) {
         final ImageView cloud = (ImageView) findViewById(R.id.cloud);
         final ImageView note = (ImageView) findViewById(R.id.note);
@@ -81,7 +93,7 @@ public class SleepActivity extends Activity {
     }
 
     /**
-     * Changes the clock and the icon location and posts itself after a delay.
+     * Changes the clock and the icon location and posts itself after a delay set to {@value #DELAY} milliseconds.
      */
     private final Runnable mChangeClockLocation = new Runnable() {
         @Override
@@ -238,20 +250,20 @@ public class SleepActivity extends Activity {
     }
 
     /**
-     * Start white noise
+     * Start/Stop white noise. This method is called directly from the layout file (onClick=), and thus appears unused.
      * @param unused the view that got this click event
      */
     @SuppressWarnings("unused")
-    public void startWhiteNoise(View unused) {
+    public void whiteNoisePressed(View unused) {
         startPlayingResource(AudioService.WHITE_NOISE);
     }
 
     /**
-     * Start white noise
+     * Start/Stop music. This method is called directly from the layout file (onClick=), and thus appears unused.
      * @param unused the view that got this click event
      */
     @SuppressWarnings("unused")
-    public void startMusic(View unused) {
+    public void musicPressed(View unused) {
         startPlayingResource(AudioService.MUSIC);
     }
 
