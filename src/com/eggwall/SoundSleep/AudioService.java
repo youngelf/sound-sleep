@@ -43,30 +43,36 @@ import java.util.Random;
 /**
  * Runs the music in the background and holds a wake lock during the duration of music playing.
  */
-public class AudioService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
+public class AudioService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener,
+        MediaPlayer.OnCompletionListener {
+    /** The namespace of our application, used for qualifying local messages. */
+    private static String NAMESPACE = "com.eggwall.SoundSleep";
+
     /** For logging */
     private static final String TAG = "AudioService";
     /** The tag used to pass the music type. Can only be MUSIC or WHITE_NOISE */
     public static final String TYPE = "type";
+
     /** Stop playing any audio. */
     public static final int SILENCE = 0;
     /** Broadcast message that says were were successful in starting silence. */
-    public static final String MESSAGE_SILENCE = "com.eggwall.SoundSleep.message.silence";
+    public static final String MESSAGE_SILENCE = NAMESPACE + ".message.silence";
 
     /** Play music from the SD card */
     public static final int MUSIC = 1;
     /** Broadcast message that says were were successful in starting music. */
-    public static final String MESSAGE_MUSIC = "com.eggwall.SoundSleep.message.music";
+    public static final String MESSAGE_MUSIC = NAMESPACE + ".message.music";
 
     /** Play standard white noise file (included in the application */
     public static final int WHITE_NOISE = 2;
     /** Broadcast message that says were were successful in starting white noise. */
-    public static final String MESSAGE_WHITE_NOISE = "com.eggwall.SoundSleep.message.white-noise";
+    public static final String MESSAGE_WHITE_NOISE = NAMESPACE + ".message.white-noise";
 
     /** Map to perform type -> message lookups */
     public static final String[] typeToMessage = {
             MESSAGE_SILENCE, MESSAGE_MUSIC, MESSAGE_WHITE_NOISE
     };
+    /** Map to perform message -> type lookups. */
     public static final HashMap <String, Integer> messageToType = new HashMap<String, Integer>(3);
     static {
         messageToType.put(MESSAGE_SILENCE, SILENCE);
@@ -78,6 +84,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     private static final int INVALID_POSITION = -1;
     /** Name of the directory in the main folder containing sleeping music */
     private final static String MUSIC_DIR = "sleeping";
+
     /** The ID for the global notification we post. */
     private final static int NOTIFICATION_ID = 0;
 
