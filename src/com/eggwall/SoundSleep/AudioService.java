@@ -316,7 +316,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      * @return the [sdcard]/music path in sdk version < 8
      */
     private static File getMusicDirTillV7() {
-        return new File(Environment.getExternalStorageDirectory(), Environment.DIRECTORY_MUSIC);
+        return new File(Environment.getExternalStorageDirectory(), "music");
     }
 
     /**

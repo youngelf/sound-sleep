@@ -22,7 +22,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Pair;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -49,9 +48,9 @@ public class SleepActivity extends Activity {
     /** The SDK version, stored off because we read it everywhere. */
     private final static int SDK = Build.VERSION.SDK_INT;
     /** The width, height of the cloud icon. */
-    private Pair<Integer, Integer> cloudSize = null;
+    private Pair cloudSize = null;
     /** The width, height of the musical note icon. */
-    private Pair<Integer, Integer> noteSize = null;
+    private Pair noteSize = null;
 
     /** The state the application is currently in. */
     private int mState = AudioService.SILENCE;
@@ -79,11 +78,13 @@ public class SleepActivity extends Activity {
         switch (state) {
             case AudioService.MUSIC:
                 cloud.setImageResource(R.drawable.rain);
-                note.setImageResource(R.drawable.stop_music);
+//                note.setImageResource(R.drawable.stop_music);
+                note.setImageResource(R.drawable.pause);
                 break;
             case AudioService.WHITE_NOISE:
                 note.setImageResource(R.drawable.music);
-                cloud.setImageResource(R.drawable.stop_rain);
+//                cloud.setImageResource(R.drawable.stop_rain);
+                cloud.setImageResource(R.drawable.pause);
                 break;
             case AudioService.SILENCE:
                 cloud.setImageResource(R.drawable.rain);
@@ -133,11 +134,11 @@ public class SleepActivity extends Activity {
         }
         if (cloudSize == null) {
             final View cloud = findViewById(R.id.cloud);
-            cloudSize = new Pair<Integer, Integer>(cloud.getMeasuredWidth(), cloud.getMeasuredHeight());
+            cloudSize = new Pair(cloud.getMeasuredWidth(), cloud.getMeasuredHeight());
         }
         if (noteSize == null) {
             final View note = findViewById(R.id.note);
-            noteSize = new Pair<Integer, Integer>(note.getMeasuredWidth(), note.getMeasuredHeight());
+            noteSize = new Pair(note.getMeasuredWidth(), note.getMeasuredHeight());
         }
     }
 
@@ -154,13 +155,13 @@ public class SleepActivity extends Activity {
         // The top half of the screen is for the note.
         final int noteY = 0;
         // The bottom half of the screen is for white noise.
-        final int cloudY = mHeight - cloudSize.second;
+        final int cloudY = mHeight - cloudSize.mSecond;
         // The cloud and the note mirror each other on opposite sides to
         // increase visual separation.
-        final int cloudX = (int) (locationX * (mWidth - cloudSize.first));
+        final int cloudX = (int) (locationX * (mWidth - cloudSize.mFirst));
         final float newCloudAlpha = (float)(.35-(mAlphaDecrement/100.0));
         final float newNoteAlpha = (float) (.50 - (mAlphaDecrement / 100.0));
-        final int noteX = (int) ((1 - locationX) * (mWidth - noteSize.first));
+        final int noteX = (int) ((1 - locationX) * (mWidth - noteSize.mFirst));
         mAlphaDecrement += 5;
         if (mAlphaDecrement > 20) {
             mAlphaDecrement = 20;
@@ -231,6 +232,7 @@ public class SleepActivity extends Activity {
         }
         setIconFromState(mState);
     }
+    // Null diff
 
     /**
      * Set the full screen view, and also request a wake lock.
