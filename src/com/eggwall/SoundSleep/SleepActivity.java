@@ -78,12 +78,10 @@ public class SleepActivity extends Activity {
         switch (state) {
             case AudioService.MUSIC:
                 cloud.setImageResource(R.drawable.rain);
-//                note.setImageResource(R.drawable.stop_music);
                 note.setImageResource(R.drawable.pause);
                 break;
             case AudioService.WHITE_NOISE:
                 note.setImageResource(R.drawable.music);
-//                cloud.setImageResource(R.drawable.stop_rain);
                 cloud.setImageResource(R.drawable.pause);
                 break;
             case AudioService.SILENCE:
