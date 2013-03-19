@@ -166,7 +166,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             resourceToPlay = R.raw.noise;
         } else {
             Log.v(TAG, "Playing all of me.");
-            resourceToPlay = R.raw.all_of_me;
+            resourceToPlay = R.raw.jingle;
         }
         try {
             final AssetFileDescriptor d = getResources().openRawResourceFd(resourceToPlay);
