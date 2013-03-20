@@ -50,8 +50,8 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     /** For logging */
     private static final String TAG = "AudioService";
-    /** The tag used to pass the music type. Can only be MUSIC or WHITE_NOISE */
-    public static final String TYPE = "type";
+    /** The tag used to pass the request. Can only be {@link #GET_STATUS}, {@link #MUSIC}, or {@link #WHITE_NOISE}*/
+    public static final String REQUEST = "request";
 
     /** Stop playing any audio. */
     public static final int SILENCE = 0;
@@ -147,7 +147,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     private void postSuccessMessage(int actionSuccessful) {
         final Intent i = new Intent();
         i.setAction(typeToMessage[actionSuccessful]);
-        LocalBroadcastManager m = LocalBroadcastManager.getInstance(this);
+        final LocalBroadcastManager m = LocalBroadcastManager.getInstance(this);
         m.sendBroadcast(i);
     }
 

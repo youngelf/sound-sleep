@@ -229,10 +229,8 @@ public class SleepActivity extends Activity {
             mState = savedInstanceState.getInt(STATE_KEY, AudioService.SILENCE);
         }
         // Ask the service for the current state. It will send a broadcast with the current state.
-        startPlayingResource(AudioService.GET_STATUS);
-        setIconFromState(mState);
+        sendRequest(AudioService.GET_STATUS);
     }
-    // Null diff
 
     /**
      * Set the full screen view, and also request a wake lock.
@@ -257,7 +255,7 @@ public class SleepActivity extends Activity {
      */
     @SuppressWarnings("unused")
     public void whiteNoisePressed(View unused) {
-        startPlayingResource(AudioService.WHITE_NOISE);
+        sendRequest(AudioService.WHITE_NOISE);
     }
 
     /**
@@ -266,21 +264,21 @@ public class SleepActivity extends Activity {
      */
     @SuppressWarnings("unused")
     public void musicPressed(View unused) {
-        startPlayingResource(AudioService.MUSIC);
+        sendRequest(AudioService.MUSIC);
     }
 
     /**
-     * Start playing the resource specified here.
-     * @param type Either MUSIC, or WHITE_NOISE. Passing the same ID twice
-     *             is a signal to stop playing music altogether.
+     * Send this request to the audio service.
+     * @param command Either {@link AudioService#GET_STATUS}, or {@link AudioService#MUSIC} or
+     * {@link AudioService#WHITE_NOISE}. Passing {@link AudioService#MUSIC} or {@link AudioService#WHITE_NOISE}
+     *             twice is a signal to become silent.
      */
-    private void startPlayingResource(int type) {
+    private void sendRequest(int command) {
         // The user has touched the screen, show the icons a bit brighter.
         resetAlphaDecrement();
         // TODO(viki) Bad idea. We should use some resolution mechanism rather than bare name.
         final Intent i = new Intent(this, AudioService.class);
-        // Play the music instructed.
-        i.putExtra(AudioService.TYPE, type);
+        i.putExtra(AudioService.REQUEST, command);
         startService(i);
     }
 }
