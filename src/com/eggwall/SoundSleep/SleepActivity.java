@@ -228,6 +228,8 @@ public class SleepActivity extends Activity {
         if (savedInstanceState != null) {
             mState = savedInstanceState.getInt(STATE_KEY, AudioService.SILENCE);
         }
+        // Ask the service for the current state. It will send a broadcast with the current state.
+        startPlayingResource(AudioService.GET_STATUS);
         setIconFromState(mState);
     }
     // Null diff

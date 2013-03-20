@@ -68,6 +68,9 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     /** Broadcast message that says were were successful in starting white noise. */
     public static final String MESSAGE_WHITE_NOISE = NAMESPACE + ".message.white-noise";
 
+    /** Just return the current status without changing any state. */
+    public static final int GET_STATUS = 3;
+
     /** Map to perform type -> message lookups */
     public static final String[] typeToMessage = {
             MESSAGE_SILENCE, MESSAGE_MUSIC, MESSAGE_WHITE_NOISE
@@ -95,8 +98,8 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     /** The object that actually plays the music on our behalf. */
     private MediaPlayer mPlayer;
-    /** Set to MUSIC or WHITE_NOISE */
-    private int mTypePlaying = 0;
+    /** Set to {@link #SILENCE}, {@link #MUSIC}, or {@link #WHITE_NOISE}. */
+    private int mTypePlaying = SILENCE;
     /** The actual directory that corresponds to the external SD card. */
     private File mMusicDir;
     /** Names of all the songs */
@@ -119,6 +122,11 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         }
         // If we don't get an extra (impossible), play white noise.
         final int typeOfResource = intent.getIntExtra("type", WHITE_NOISE);
+        // If this is a call to get the status, just return right here.
+        if (typeOfResource == GET_STATUS) {
+            postSuccessMessage(mTypePlaying);
+            return 0;
+        }
         if (mTypePlaying == typeOfResource || typeOfResource == SILENCE) {
             // Pressing the same button twice is an instruction to stop playing this music.
             mTypePlaying = SILENCE;
