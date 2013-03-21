@@ -170,10 +170,10 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         // Either we weren't able to play custom music, or we were asked to play white noise.
         final int resourceToPlay;
         if (type == WHITE_NOISE) {
-            Log.v(TAG, "Playing browninan noise.");
+            Log.v(TAG, "Playing white noise.");
             resourceToPlay = R.raw.noise;
         } else {
-            Log.v(TAG, "Playing all of me.");
+            Log.v(TAG, "Playing included jingle.");
             resourceToPlay = R.raw.jingle;
         }
         try {
@@ -334,16 +334,17 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     private void setForegroundService() {
         final Intent showClock = new Intent(this, SleepActivity.class);
         final PendingIntent pending = PendingIntent.getActivity(this, 0, showClock, PendingIntent.FLAG_UPDATE_CURRENT);
+        final String title = "Playing music";
         if (SDK >= 11) {
             final Notification.Builder builder = new Notification.Builder(this)
-                    .setContentTitle("Playing music")
+                    .setContentTitle(title)
                     .setSmallIcon(R.drawable.ic_launcher)
                     .setOngoing(true);
             builder.setContentIntent(pending);
             mNotificationManager.notify(NOTIFICATION_ID, builder.build());
         } else {
             final NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
-                    .setContentTitle("Playing music")
+                    .setContentTitle(title)
                     .setSmallIcon(R.drawable.ic_launcher)
                     .setOngoing(true);
             builder.setContentIntent(pending);
@@ -372,7 +373,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     @Override
     public void onDestroy() {
-        Log.v(TAG, "bye bye");
+        Log.v(TAG, "AudioService: onDestroy() called");
         removeNotification();
         releasePlayer();
         // Indicate that the service is quitting.
