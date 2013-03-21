@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/toplevel"
+        android:layout_width="fill_parent"
+        android:background="@color/black"
+        android:layout_height="fill_parent">
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:weightSum="2">
+        <Button
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:layout_weight="1"
+                android:alpha="0"
+                android:background="@color/black"
+                android:id="@+id/startMusic"
+                android:onClick="musicPressed"
+                android:layout_gravity="top"/>
+        <Button
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:layout_weight="1"
+                android:alpha="0"
+                android:background="@color/black"
+                android:onClick="whiteNoisePressed"
+                android:id="@+id/startWhiteNoise"
+                android:layout_gravity="bottom"/>
+    </LinearLayout>
+    <ImageView android:layout_width="wrap_content"
+               android:layout_height="wrap_content"
+               android:alpha="0.5"
+               android:contentDescription="@string/cloudDesc"
+               android:id="@+id/cloud"/>
+    <ImageView android:layout_width="wrap_content"
+               android:layout_height="wrap_content"
+               android:contentDescription="@string/noteDesc"
+               android:alpha="0.35"
+               android:id="@+id/note"/>
+    <!--Show a clock always with h:mm even in 24 hour mode. -->
+    <com.eggwall.SoundSleep.TextClock
+            android:layout_width="wrap_content"
+               android:layout_height="wrap_content"
+               android:id="@+id/clock"
+               android:background="@color/blackSemiTransparent"
+               android:textSize="120dip"/>
+</FrameLayout>

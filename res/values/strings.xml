@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sound Sleep</string>
+    <string name="cloudDesc">cloud</string>
+    <string name="noteDesc">music note</string>
+</resources>
