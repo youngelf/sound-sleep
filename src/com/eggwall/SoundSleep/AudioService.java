@@ -121,7 +121,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         }
         // If we don't get an extra (impossible), play white noise.
-        final int typeOfResource = intent.getIntExtra("type", WHITE_NOISE);
+        final int typeOfResource = intent.getIntExtra(REQUEST, WHITE_NOISE);
         // If this is a call to get the status, just return right here.
         if (typeOfResource == GET_STATUS) {
             postSuccessMessage(mTypePlaying);
