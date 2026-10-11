@@ -68,25 +68,246 @@
     -->
     <import file="custom_rules.xml" optional="true"/>
 
-    <!-- Import the actual build file.
+    <!-- Default properties matching modern Android SDK layout -->
+    <property name="source.dir" value="src"/>
+    <property name="gen.absolute.dir" location="gen"/>
+    <property name="out.dir" value="bin"/>
+    <property name="out.absolute.dir" location="${out.dir}"/>
+    <property name="out.classes.absolute.dir" location="${out.dir}/classes"/>
+    <property name="resource.absolute.dir" location="res"/>
+    <property name="manifest.abs.file" location="AndroidManifest.xml"/>
+    <property name="target" value="android-35"/>
+    <property name="build.tools.version" value="35.0.0"/>
+    <property name="min.sdk.version" value="19"/>
 
-         To customize existing targets, there are two options:
-         - Customize only one target:
-             - copy/paste the target into this file, *before* the
-               <import> task.
-             - customize it to your needs.
-         - Customize the whole content of build.xml
-             - copy/paste the content of the rules files (minus the top node)
-               into this file, replacing the <import> task.
-             - customize to your needs.
+    <property name="android.jar" location="${sdk.dir}/platforms/${target}/android.jar"/>
+    <property name="build.tools.dir" location="${sdk.dir}/build-tools/${build.tools.version}"/>
+    <property name="aapt" location="${build.tools.dir}/aapt"/>
+    <property name="d8" location="${build.tools.dir}/d8"/>
+    <property name="zipalign" location="${build.tools.dir}/zipalign"/>
+    <property name="apksigner" location="${build.tools.dir}/apksigner"/>
 
-         ***********************
-         ****** IMPORTANT ******
-         ***********************
-         In all cases you must update the value of version-tag below to read 'custom' instead of an integer,
-         in order to avoid having your file be overridden by tools such as "android update project"
-    -->
-    <!-- version-tag: 1 -->
-    <import file="${sdk.dir}/tools/ant/build.xml"/>
+    <property name="classes.jar" location="${out.dir}/classes.jar"/>
+    <property name="unaligned.apk" location="${out.dir}/${ant.project.name}-unaligned.apk"/>
+    <property name="release.unsigned.apk" location="${out.dir}/${ant.project.name}-release-unsigned.apk"/>
+    <property name="release.signed.apk" location="${out.dir}/${ant.project.name}-release.apk"/>
+    <property name="debug.apk" location="${out.dir}/${ant.project.name}-debug.apk"/>
+    <property name="debug.keystore" location="debug.keystore"/>
+
+    <condition property="has.release.keystore">
+        <and>
+            <isset property="key.store"/>
+            <isset property="key.alias"/>
+        </and>
+    </condition>
+
+    <target name="-check-env">
+        <available file="${android.jar}" property="android.jar.present"/>
+        <fail unless="android.jar.present"
+              message="Cannot find ${android.jar}. Check sdk.dir in local.properties and target in project.properties."/>
+        <available file="${aapt}" property="build.tools.present"/>
+        <fail unless="build.tools.present"
+              message="Cannot find build-tools at ${build.tools.dir}. Check build.tools.version in project.properties."/>
+    </target>
+
+    <target name="clean" description="Removes output files created by other targets.">
+        <delete dir="${out.absolute.dir}"/>
+        <delete dir="${gen.absolute.dir}"/>
+    </target>
+
+    <target name="-dirs" depends="-check-env">
+        <mkdir dir="${gen.absolute.dir}"/>
+        <mkdir dir="${out.absolute.dir}"/>
+        <mkdir dir="${out.classes.absolute.dir}"/>
+    </target>
+
+    <target name="-resource-src" depends="-dirs">
+        <echo message="Generating R.java..."/>
+        <exec executable="${aapt}" failonerror="true">
+            <arg value="package"/>
+            <arg value="-f"/>
+            <arg value="-m"/>
+            <arg value="-J"/>
+            <arg path="${gen.absolute.dir}"/>
+            <arg value="-M"/>
+            <arg path="${manifest.abs.file}"/>
+            <arg value="-S"/>
+            <arg path="${resource.absolute.dir}"/>
+            <arg value="-I"/>
+            <arg path="${android.jar}"/>
+        </exec>
+    </target>
+
+    <target name="-compile" depends="-resource-src">
+        <echo message="Compiling Java sources..."/>
+        <javac destdir="${out.classes.absolute.dir}"
+               bootclasspath="${android.jar}"
+               source="1.8"
+               target="1.8"
+               includeantruntime="false"
+               encoding="UTF-8"
+               debug="true">
+            <compilerarg value="-Xlint:-options"/>
+            <src path="${source.dir}"/>
+            <src path="${gen.absolute.dir}"/>
+        </javac>
+        <jar destfile="${classes.jar}" basedir="${out.classes.absolute.dir}"/>
+    </target>
+
+    <target name="-dex-release" depends="-compile">
+        <echo message="Converting compiled classes into DEX (release)..."/>
+        <exec executable="${d8}" failonerror="true">
+            <arg value="--release"/>
+            <arg value="--min-api"/>
+            <arg value="${min.sdk.version}"/>
+            <arg value="--lib"/>
+            <arg path="${android.jar}"/>
+            <arg value="--output"/>
+            <arg path="${out.absolute.dir}"/>
+            <arg path="${classes.jar}"/>
+        </exec>
+    </target>
+
+    <target name="-dex-debug" depends="-compile">
+        <echo message="Converting compiled classes into DEX (debug)..."/>
+        <exec executable="${d8}" failonerror="true">
+            <arg value="--debug"/>
+            <arg value="--min-api"/>
+            <arg value="${min.sdk.version}"/>
+            <arg value="--lib"/>
+            <arg path="${android.jar}"/>
+            <arg value="--output"/>
+            <arg path="${out.absolute.dir}"/>
+            <arg path="${classes.jar}"/>
+        </exec>
+    </target>
+
+    <target name="-package-resources" depends="-dirs">
+        <echo message="Packaging resources..."/>
+        <exec executable="${aapt}" failonerror="true">
+            <arg value="package"/>
+            <arg value="-f"/>
+            <arg value="-0"/>
+            <arg value="arsc"/>
+            <arg value="-M"/>
+            <arg path="${manifest.abs.file}"/>
+            <arg value="-S"/>
+            <arg path="${resource.absolute.dir}"/>
+            <arg value="-I"/>
+            <arg path="${android.jar}"/>
+            <arg value="-F"/>
+            <arg path="${unaligned.apk}"/>
+        </exec>
+    </target>
+
+    <target name="-package-release" depends="-dex-release, -package-resources">
+        <exec executable="${aapt}" dir="${out.absolute.dir}" failonerror="true">
+            <arg value="add"/>
+            <arg path="${unaligned.apk}"/>
+            <arg value="classes.dex"/>
+        </exec>
+        <exec executable="${zipalign}" failonerror="true">
+            <arg value="-f"/>
+            <arg value="-p"/>
+            <arg value="4"/>
+            <arg path="${unaligned.apk}"/>
+            <arg path="${release.unsigned.apk}"/>
+        </exec>
+        <delete file="${unaligned.apk}"/>
+    </target>
+
+    <target name="-sign-release" depends="-package-release" if="has.release.keystore">
+        <input message="Please enter keystore password (store:${key.store}):" addproperty="key.store.password"/>
+        <input message="Please enter password for alias '${key.alias}':" addproperty="key.alias.password"/>
+        <exec executable="${apksigner}" failonerror="true">
+            <arg value="sign"/>
+            <arg value="--ks"/>
+            <arg path="${key.store}"/>
+            <arg value="--ks-key-alias"/>
+            <arg value="${key.alias}"/>
+            <arg value="--ks-pass"/>
+            <arg value="pass:${key.store.password}"/>
+            <arg value="--key-pass"/>
+            <arg value="pass:${key.alias.password}"/>
+            <arg value="--out"/>
+            <arg path="${release.signed.apk}"/>
+            <arg path="${release.unsigned.apk}"/>
+        </exec>
+        <echo message="Release APK signed: ${release.signed.apk}"/>
+    </target>
+
+    <target name="-no-sign-release" depends="-package-release" unless="has.release.keystore">
+        <echo message="No key.store and key.alias properties found in ant.properties."/>
+        <echo message="Unsigned release APK available at: ${release.unsigned.apk}"/>
+    </target>
+
+    <target name="release" depends="-sign-release, -no-sign-release"
+            description="Builds the application in release mode."/>
+
+    <target name="-ensure-debug-keystore">
+        <available file="${debug.keystore}" property="debug.keystore.exists"/>
+    </target>
+
+    <target name="-create-debug-keystore" depends="-ensure-debug-keystore" unless="debug.keystore.exists">
+        <mkdir dir="${user.home}/.android"/>
+        <exec executable="keytool" failonerror="true">
+            <arg value="-genkeypair"/>
+            <arg value="-v"/>
+            <arg value="-keystore"/>
+            <arg path="${debug.keystore}"/>
+            <arg value="-storepass"/>
+            <arg value="android"/>
+            <arg value="-alias"/>
+            <arg value="androiddebugkey"/>
+            <arg value="-keypass"/>
+            <arg value="android"/>
+            <arg value="-keyalg"/>
+            <arg value="RSA"/>
+            <arg value="-keysize"/>
+            <arg value="2048"/>
+            <arg value="-validity"/>
+            <arg value="10000"/>
+            <arg value="-dname"/>
+            <arg value="CN=Android Debug,O=Android,C=US"/>
+        </exec>
+    </target>
+
+    <target name="debug" depends="-dex-debug, -package-resources, -create-debug-keystore"
+            description="Builds the application in debug mode and signs it with a debug key.">
+        <exec executable="${aapt}" dir="${out.absolute.dir}" failonerror="true">
+            <arg value="add"/>
+            <arg path="${unaligned.apk}"/>
+            <arg value="classes.dex"/>
+        </exec>
+        <exec executable="${zipalign}" failonerror="true">
+            <arg value="-f"/>
+            <arg value="-p"/>
+            <arg value="4"/>
+            <arg path="${unaligned.apk}"/>
+            <arg path="${debug.apk}"/>
+        </exec>
+        <delete file="${unaligned.apk}"/>
+        <exec executable="${apksigner}" failonerror="true">
+            <arg value="sign"/>
+            <arg value="--ks"/>
+            <arg path="${debug.keystore}"/>
+            <arg value="--ks-key-alias"/>
+            <arg value="androiddebugkey"/>
+            <arg value="--ks-pass"/>
+            <arg value="pass:android"/>
+            <arg value="--key-pass"/>
+            <arg value="pass:android"/>
+            <arg path="${debug.apk}"/>
+        </exec>
+        <echo message="Debug APK created: ${debug.apk}"/>
+    </target>
+
+    <target name="help" description="Displays available targets.">
+        <echo message="Android Ant Build. Available targets:"/>
+        <echo message="   help:      Displays this help."/>
+        <echo message="   clean:     Removes output files created by other targets."/>
+        <echo message="   debug:     Builds the application and signs it with a debug key."/>
+        <echo message="   release:   Builds the application in release mode."/>
+    </target>
 
 </project>

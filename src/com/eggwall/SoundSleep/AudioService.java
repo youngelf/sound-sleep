@@ -17,6 +17,7 @@
 package com.eggwall.SoundSleep;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -28,9 +29,6 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
 import android.os.PowerManager;
-import android.support.v4.app.NotificationCompat;
-
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import java.io.File;
@@ -89,7 +87,9 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     private final static String MUSIC_DIR = "sleeping";
 
     /** The ID for the global notification we post. */
-    private final static int NOTIFICATION_ID = 0;
+    private final static int NOTIFICATION_ID = 1;
+    /** Notification channel ID for Android O and above. */
+    private final static String NOTIFICATION_CHANNEL_ID = "sound_sleep_playback";
 
     /** Single instance of random number generator */
     private final Random mRandom = new Random();
@@ -121,23 +121,25 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         }
         // If we don't get an extra (impossible), play white noise.
-        final int typeOfResource = intent.getIntExtra(REQUEST, WHITE_NOISE);
+        final int typeOfResource = (intent != null)
+                ? intent.getIntExtra(REQUEST, WHITE_NOISE)
+                : WHITE_NOISE;
         // If this is a call to get the status, just return right here.
         if (typeOfResource == GET_STATUS) {
             postSuccessMessage(mTypePlaying);
-            return 0;
+            return START_NOT_STICKY;
         }
         if (mTypePlaying == typeOfResource || typeOfResource == SILENCE) {
             // Pressing the same button twice is an instruction to stop playing this music.
             mTypePlaying = SILENCE;
             stopSelf();
-            return 0;
+            return START_NOT_STICKY;
         }
         // Switch to the other type of music
         mTypePlaying = typeOfResource;
         releasePlayer();
         play(mTypePlaying);
-        return 0;
+        return START_NOT_STICKY;
     }
 
     /**
@@ -145,10 +147,9 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      * noise, or becoming silent.
      */
     private void postSuccessMessage(int actionSuccessful) {
-        final Intent i = new Intent();
-        i.setAction(typeToMessage[actionSuccessful]);
-        final LocalBroadcastManager m = LocalBroadcastManager.getInstance(this);
-        m.sendBroadcast(i);
+        final Intent i = new Intent(typeToMessage[actionSuccessful]);
+        i.setPackage(getPackageName());
+        sendBroadcast(i);
     }
 
     /**
@@ -272,7 +273,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         }
         final String[] filenames = mMusicDir.list();
         Log.e(TAG, "All filenames: " + Arrays.toString(filenames));
-        if (filenames.length <= 0) {
+        if (filenames == null || filenames.length <= 0) {
             Log.e(TAG, "Music directory has no files." + mMusicDir);
             return foundNothing;
         }
@@ -281,7 +282,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
 
     /**
      * Returns the location of the music directory which is
-     * [sdcard]/music/sleeping.
+     * [sdcard]/Music/sleeping.
      * @return the file representing the music directory.
      */
     private static File getMusicDir() {
@@ -291,12 +292,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             Log.e(TAG, "SD card root directory is not available");
             return null;
         }
-        final File rootSdLocation;
-        if (SDK >= 8) {
-            rootSdLocation = getMusicDirAfterV8();
-        } else {
-            rootSdLocation = getMusicDirTillV7();
-        }
+        final File rootSdLocation = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
         if (rootSdLocation == null) {
             // Not a directory? Completely unexpected.
             Log.e(TAG, "SD card root directory is NOT a directory: " + rootSdLocation);
@@ -312,44 +308,31 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     }
 
     /**
-     * [sdcard]/music in SDK >= 8
-     * @return the [sdcard]/music path in sdk version >= 8
-     */
-    private static File getMusicDirAfterV8() {
-        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
-    }
-
-    /**
-     * [sdcard]/music in SDK < 8
-     * @return the [sdcard]/music path in sdk version < 8
-     */
-    private static File getMusicDirTillV7() {
-        return new File(Environment.getExternalStorageDirectory(), "music");
-    }
-
-    /**
-     * The idea here is to set the notification so that the service can always run. However, ths is not
-     * happening correctly right now.
+     * Post an ongoing notification while music or white noise is playing.
      */
     private void setForegroundService() {
         final Intent showClock = new Intent(this, SleepActivity.class);
-        final PendingIntent pending = PendingIntent.getActivity(this, 0, showClock, PendingIntent.FLAG_UPDATE_CURRENT);
+        final int pendingFlags = (SDK >= Build.VERSION_CODES.M)
+                ? (PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE)
+                : PendingIntent.FLAG_UPDATE_CURRENT;
+        final PendingIntent pending = PendingIntent.getActivity(this, 0, showClock, pendingFlags);
         final String title = "Playing music";
-        if (SDK >= 11) {
-            final Notification.Builder builder = new Notification.Builder(this)
-                    .setContentTitle(title)
-                    .setSmallIcon(R.drawable.ic_launcher)
-                    .setOngoing(true);
-            builder.setContentIntent(pending);
-            mNotificationManager.notify(NOTIFICATION_ID, builder.build());
+        final Notification.Builder builder;
+        if (SDK >= Build.VERSION_CODES.O) {
+            final NotificationChannel channel = new NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID,
+                    getString(R.string.app_name),
+                    NotificationManager.IMPORTANCE_LOW);
+            mNotificationManager.createNotificationChannel(channel);
+            builder = new Notification.Builder(this, NOTIFICATION_CHANNEL_ID);
         } else {
-            final NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
-                    .setContentTitle(title)
-                    .setSmallIcon(R.drawable.ic_launcher)
-                    .setOngoing(true);
-            builder.setContentIntent(pending);
-            mNotificationManager.notify(NOTIFICATION_ID, builder.build());
+            builder = new Notification.Builder(this);
         }
+        builder.setContentTitle(title)
+                .setSmallIcon(R.drawable.ic_launcher)
+                .setOngoing(true)
+                .setContentIntent(pending);
+        mNotificationManager.notify(NOTIFICATION_ID, builder.build());
     }
 
     /**

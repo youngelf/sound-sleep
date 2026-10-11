@@ -16,14 +16,18 @@
 
 package com.eggwall.SoundSleep;
 
+import android.app.ActionBar;
 import android.app.Activity;
 import android.content.*;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v4.content.LocalBroadcastManager;
+import android.os.Looper;
+import android.util.Pair;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.widget.ImageView;
 
@@ -32,7 +36,7 @@ import android.widget.ImageView;
  */
 public class SleepActivity extends Activity {
     /** Handler associated with the main thread for posting runnables. */
-    private final Handler mHandler = new Handler();
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     /** The width of our entire window. */
     private int mWidth;
     /** The height of our entire window*/
@@ -48,22 +52,25 @@ public class SleepActivity extends Activity {
     /** The SDK version, stored off because we read it everywhere. */
     private final static int SDK = Build.VERSION.SDK_INT;
     /** The width, height of the cloud icon. */
-    private Pair cloudSize = null;
+    private Pair<Integer, Integer> cloudSize = null;
     /** The width, height of the musical note icon. */
-    private Pair noteSize = null;
+    private Pair<Integer, Integer> noteSize = null;
 
     /** The state the application is currently in. */
     private int mState = AudioService.SILENCE;
     /** Key to store {@link #mState} in a bundle. */
     private static String STATE_KEY = "state-key";
 
-    /** Receiver that accepts local broadcasts from the service to update the UI. */
+    /** Receiver that accepts broadcasts from the service to update the UI. */
     private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
-            mState = AudioService.messageToType.get(action);
-            setIconFromState(mState);
+            final Integer state = AudioService.messageToType.get(action);
+            if (state != null) {
+                mState = state;
+                setIconFromState(mState);
+            }
         }
     };
 
@@ -111,11 +118,7 @@ public class SleepActivity extends Activity {
         final View v = findViewById(R.id.clock);
         final int x = (int)(Math.random()*(mWidth - v.getMeasuredWidth()));
         final int y = (int)(Math.random()*(mHeight- v.getMeasuredHeight()));
-        if (SDK >= 12) {
-            v.animate().x(x).y(y);
-        } else {
-            v.setPadding(x, y, 0, 0);
-        }
+        v.animate().x(x).y(y);
     }
 
     /**
@@ -132,11 +135,11 @@ public class SleepActivity extends Activity {
         }
         if (cloudSize == null) {
             final View cloud = findViewById(R.id.cloud);
-            cloudSize = new Pair(cloud.getMeasuredWidth(), cloud.getMeasuredHeight());
+            cloudSize = new Pair<Integer, Integer>(cloud.getMeasuredWidth(), cloud.getMeasuredHeight());
         }
         if (noteSize == null) {
             final View note = findViewById(R.id.note);
-            noteSize = new Pair(note.getMeasuredWidth(), note.getMeasuredHeight());
+            noteSize = new Pair<Integer, Integer>(note.getMeasuredWidth(), note.getMeasuredHeight());
         }
     }
 
@@ -153,28 +156,23 @@ public class SleepActivity extends Activity {
         // The top half of the screen is for the note.
         final int noteY = 0;
         // The bottom half of the screen is for white noise.
-        final int cloudY = mHeight - cloudSize.mSecond;
+        final int cloudY = mHeight - cloudSize.second;
         // The cloud and the note mirror each other on opposite sides to
         // increase visual separation.
-        final int cloudX = (int) (locationX * (mWidth - cloudSize.mFirst));
+        final int cloudX = (int) (locationX * (mWidth - cloudSize.first));
         final float newCloudAlpha = (float)(.35-(mAlphaDecrement/100.0));
         final float newNoteAlpha = (float) (.50 - (mAlphaDecrement / 100.0));
-        final int noteX = (int) ((1 - locationX) * (mWidth - noteSize.mFirst));
+        final int noteX = (int) ((1 - locationX) * (mWidth - noteSize.first));
         mAlphaDecrement += 5;
         if (mAlphaDecrement > 20) {
             mAlphaDecrement = 20;
         }
         final View cloud = findViewById(R.id.cloud);
         final View note = findViewById(R.id.note);
-        if (SDK >= 11) {
-            cloud.setY(cloudY);
-            cloud.animate().x(cloudX).alpha(newCloudAlpha);
-            note.setY(noteY);
-            note.animate().x(noteX).alpha(newNoteAlpha);
-        } else {
-            cloud.setPadding(cloudX, cloudY, 0, 0);
-            note.setPadding(noteX, noteY, 0, 0);
-        }
+        cloud.setY(cloudY);
+        cloud.animate().x(cloudX).alpha(newCloudAlpha);
+        note.setY(noteY);
+        note.animate().x(noteX).alpha(newNoteAlpha);
     }
 
     @Override
@@ -187,9 +185,6 @@ public class SleepActivity extends Activity {
      * Sets the visibility of the icons back to full brightness.
      */
     void resetAlphaDecrement() {
-        if (SDK < 11) {
-            return;
-        }
         mAlphaDecrement = 0;
         final View cloud = findViewById(R.id.cloud);
         final View note = findViewById(R.id.note);
@@ -200,30 +195,34 @@ public class SleepActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        final LocalBroadcastManager m = LocalBroadcastManager.getInstance(this);
-        m.unregisterReceiver(mMessageReceiver);
+        mHandler.removeCallbacks(mChangeClockLocation);
+        unregisterReceiver(mMessageReceiver);
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Go full screen.
-        if (SDK >= 11) {
-            (getActionBar()).hide();
-        } else {
-            requestWindowFeature(Window.FEATURE_NO_TITLE);
+        // Go full screen and remove the title/action bar.
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        final ActionBar actionBar = getActionBar();
+        if (actionBar != null) {
+            actionBar.hide();
         }
-        final int fullscreen = WindowManager.LayoutParams.FLAG_FULLSCREEN;
-        getWindow().setFlags(fullscreen, fullscreen);
+        getWindow().addFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+                | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.main);
         postClockChange(INITIAL_DELAY);
         setGlobalScreenSettings();
-        final LocalBroadcastManager m = LocalBroadcastManager.getInstance(this);
         final IntentFilter filter = new IntentFilter();
         filter.addAction(AudioService.MESSAGE_SILENCE);
         filter.addAction(AudioService.MESSAGE_MUSIC);
         filter.addAction(AudioService.MESSAGE_WHITE_NOISE);
-        m.registerReceiver(mMessageReceiver, filter);
+        if (SDK >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(mMessageReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(mMessageReceiver, filter);
+        }
 
         if (savedInstanceState != null) {
             mState = savedInstanceState.getInt(STATE_KEY, AudioService.SILENCE);
@@ -232,17 +231,50 @@ public class SleepActivity extends Activity {
         sendRequest(AudioService.GET_STATUS);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        setGlobalScreenSettings();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            setGlobalScreenSettings();
+        }
+    }
+
     /**
-     * Set the full screen view, and also request a wake lock.
+     * Set the full screen view (hiding status bar, menu/action bar, and on-screen
+     * home/recents navigation buttons), and disable screen timeout while running.
      */
     private void setGlobalScreenSettings() {
-        final View topLevel = findViewById(R.id.toplevel);
-        // Hide the System status bar
-        if (SDK >= 11) {
-            topLevel.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE);
-        }
+        final Window window = getWindow();
         // Keep the screen always on, irrespective of power state.
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        // Hide the System status bar and on-screen navigation bar (home/recents buttons).
+        if (SDK >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false);
+            final WindowInsetsController controller = window.getInsetsController();
+            if (controller != null) {
+                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                controller.setSystemBarsBehavior(
+                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else {
+            final View topLevel = findViewById(R.id.toplevel);
+            if (topLevel != null) {
+                topLevel.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN);
+            }
+        }
     }
 
     private void postClockChange(int delay) {
