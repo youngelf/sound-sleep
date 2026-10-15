@@ -24,7 +24,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Pair;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -60,6 +63,81 @@ public class SleepActivity extends Activity {
     private int mState = AudioService.SILENCE;
     /** Key to store {@link #mState} in a bundle. */
     private static String STATE_KEY = "state-key";
+
+    /** Detector used to identify and ignore upward navigation swipes from the bottom of the screen. */
+    private GestureDetector mGestureDetector;
+    /** Minimum distance in pixels before a touch can wander before being treated as a scroll/swipe. */
+    private int mTouchSlop;
+    /** True if the current touch gesture is an upward swipe from the bottom of the screen. */
+    private boolean mIgnoreUpSwipe = false;
+    /** True once an ongoing touch target has been cancelled for an ignored upward swipe. */
+    private boolean mSwipeCancelled = false;
+    /** X coordinate where the current touch gesture started. */
+    private float mDownX;
+    /** Y coordinate where the current touch gesture started. */
+    private float mDownY;
+
+    /**
+     * Gesture listener that detects and ignores upward swipes starting from the bottom of the
+     * screen, which occur when the user swipes up to go Home (up-flick) or to open Recent Apps
+     * (slow up-swipe).
+     */
+    private final GestureDetector.SimpleOnGestureListener mGestureListener =
+            new GestureDetector.SimpleOnGestureListener() {
+                @Override
+                public boolean onDown(MotionEvent e) {
+                    mIgnoreUpSwipe = false;
+                    mSwipeCancelled = false;
+                    if (e != null) {
+                        mDownX = e.getX();
+                        mDownY = e.getY();
+                    }
+                    return false;
+                }
+
+                @Override
+                public boolean onScroll(
+                        MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                    if (isUpSwipeFromBottom(e1, e2)) {
+                        mIgnoreUpSwipe = true;
+                        return true;
+                    }
+                    return false;
+                }
+
+                @Override
+                public boolean onFling(
+                        MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                    if (isUpSwipeFromBottom(e1, e2) && velocityY < 0) {
+                        mIgnoreUpSwipe = true;
+                        return true;
+                    }
+                    return false;
+                }
+            };
+
+    /**
+     * Returns true if the gesture between {@code e1} and {@code e2} started in the bottom half of
+     * the screen and moved predominantly upward past the touch slop threshold.
+     */
+    private boolean isUpSwipeFromBottom(MotionEvent e1, MotionEvent e2) {
+        if (e2 == null) {
+            return false;
+        }
+        populateTopLevelDimen();
+        final float startX = (e1 != null) ? e1.getX() : mDownX;
+        final float startY = (e1 != null) ? e1.getY() : mDownY;
+        final View topLevel = findViewById(R.id.toplevel);
+        final int screenHeight = (topLevel != null && topLevel.getHeight() > 0)
+                ? topLevel.getHeight()
+                : mHeight;
+        if (screenHeight > 0 && startY < (screenHeight / 2.0f)) {
+            return false;
+        }
+        final float dy = startY - e2.getY();
+        final float dx = e2.getX() - startX;
+        return dy > mTouchSlop && dy > Math.abs(dx);
+    }
 
     /** Receiver that accepts broadcasts from the service to update the UI. */
     private final BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
@@ -212,6 +290,8 @@ public class SleepActivity extends Activity {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN
                 | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.main);
+        mTouchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
+        mGestureDetector = new GestureDetector(this, mGestureListener);
         postClockChange(INITIAL_DELAY);
         setGlobalScreenSettings();
         final IntentFilter filter = new IntentFilter();
@@ -235,6 +315,30 @@ public class SleepActivity extends Activity {
     protected void onResume() {
         super.onResume();
         setGlobalScreenSettings();
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            mIgnoreUpSwipe = false;
+            mSwipeCancelled = false;
+            mDownX = ev.getX();
+            mDownY = ev.getY();
+        }
+        if (mGestureDetector != null) {
+            mGestureDetector.onTouchEvent(ev);
+        }
+        if (mIgnoreUpSwipe) {
+            if (!mSwipeCancelled) {
+                mSwipeCancelled = true;
+                final MotionEvent cancelEvent = MotionEvent.obtain(ev);
+                cancelEvent.setAction(MotionEvent.ACTION_CANCEL);
+                super.dispatchTouchEvent(cancelEvent);
+                cancelEvent.recycle();
+            }
+            return true;
+        }
+        return super.dispatchTouchEvent(ev);
     }
 
     @Override
