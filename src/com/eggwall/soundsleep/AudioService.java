@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-package com.eggwall.SoundSleep;
+package com.eggwall.soundsleep;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -44,7 +44,7 @@ import java.util.Random;
 public class AudioService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener,
         MediaPlayer.OnCompletionListener {
     /** The namespace of our application, used for qualifying local messages. */
-    private static String NAMESPACE = "com.eggwall.SoundSleep";
+    private static String NAMESPACE = "com.eggwall.soundsleep";
 
     /** For logging */
     private static final String TAG = "AudioService";

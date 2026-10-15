@@ -40,7 +40,7 @@
                android:alpha="0.35"
                android:id="@+id/note"/>
     <!--Show a clock always with h:mm even in 24 hour mode. -->
-    <com.eggwall.SoundSleep.TextClock
+    <com.eggwall.soundsleep.TextClock
             android:layout_width="wrap_content"
                android:layout_height="wrap_content"
                android:id="@+id/clock"

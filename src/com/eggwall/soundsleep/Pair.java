@@ -1,4 +1,4 @@
-package com.eggwall.SoundSleep;
+package com.eggwall.soundsleep;
 
 /**
  * Copyright 2013 Vikram Aggarwal

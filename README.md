@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Sound Sleep** (`com.eggwall.SoundSleep`) is a minimalist night-clock and sleep-aid application for Android. It is designed to sit on a nightstand all night with minimal visual distraction while optionally playing soothing audio:
+**Sound Sleep** (`com.eggwall.soundsleep`) is a minimalist night-clock and sleep-aid application for Android. It is designed to sit on a nightstand all night with minimal visual distraction while optionally playing soothing audio:
 
 - **All-Night Clock Display**: Displays the current time in a large `h:mm` format (`120dip`) on a pure black background while disabling the device's screen timeout (`FLAG_KEEP_SCREEN_ON` and `android:keepScreenOn="true"`).
 - **Immersive Fullscreen**: Hides the title/action bar, system status bar, and on-screen navigation buttons (Home, Recents, Back) so the clock uses the entire screen without bright system UI chrome.
@@ -30,9 +30,9 @@
 
 ## Architecture
 
-The project contains two primary components in `src/com/eggwall/SoundSleep/` and a single main layout in `res/layout/main.xml`:
+The project contains two primary components in `src/com/eggwall/soundsleep/` and a single main layout in `res/layout/main.xml`:
 
-1. **`SleepActivity` (`src/com/eggwall/SoundSleep/SleepActivity.java`)**:
+1. **`SleepActivity` (`src/com/eggwall/soundsleep/SleepActivity.java`)**:
    - Hosts the fullscreen UI defined in `res/layout/main.xml`:
      - A root `FrameLayout` (`@+id/toplevel`) with a black background and `android:keepScreenOn="true"`.
      - Two invisible full-width `Button` regions stacked vertically (`@+id/startMusic` on the top half, `@+id/startWhiteNoise` on the bottom half) that capture taps across the top and bottom halves of the screen.
@@ -42,7 +42,7 @@ The project contains two primary components in `src/com/eggwall/SoundSleep/` and
    - Schedules a periodic `Runnable` (`mChangeClockLocation`) on the main-thread `Handler` every 10 minutes (`DELAY = 10 * 60 * 1000` ms) to reposition the clock and icons and gradually reduce icon alpha.
    - Sends command `Intent`s (`MUSIC`, `WHITE_NOISE`, `GET_STATUS`) to `AudioService` and listens for package-scoped status broadcasts (`MESSAGE_SILENCE`, `MESSAGE_MUSIC`, `MESSAGE_WHITE_NOISE`) to keep the icons synchronized with playback state.
 
-2. **`AudioService` (`src/com/eggwall/SoundSleep/AudioService.java`)**:
+2. **`AudioService` (`src/com/eggwall/soundsleep/AudioService.java`)**:
    - A background Android `Service` managing a `MediaPlayer` instance with a `PARTIAL_WAKE_LOCK` so audio continues playing even if the user switches away from the activity.
    - Handles state transitions between `SILENCE`, `MUSIC`, and `WHITE_NOISE`. Receiving the currently playing command a second time stops playback and stops the service.
    - Posts an ongoing notification (`NOTIFICATION_ID = 1`) while audio is playing that returns the user to `SleepActivity` when tapped, and broadcasts state updates back to `SleepActivity`.

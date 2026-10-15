@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-package com.eggwall.SoundSleep;
+package com.eggwall.soundsleep;
 
 import android.app.ActionBar;
 import android.app.Activity;
