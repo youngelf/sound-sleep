@@ -13,6 +13,7 @@ out/
 local.properties
 *.keystore
 *.key
+ant.properties
 
 # OS files
 .DS_Store
