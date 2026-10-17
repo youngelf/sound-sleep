@@ -60,7 +60,7 @@ The project contains two primary components in `src/com/eggwall/soundsleep/` and
 Ensure `sdk.dir` in `local.properties` points to your Android SDK installation (or set the `ANDROID_HOME` environment variable):
 
 ```properties
-sdk.dir=/usr/local/google/home/viki/Android/Sdk
+sdk.dir=/home/viki/Android/Sdk
 ```
 
 ### 2. Build the App Bundle (`.aab`) and APK
