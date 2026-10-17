@@ -18,7 +18,7 @@
 
 - **Supported Device Architectures**: All Android CPU architectures (`armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`) across phones and tablets, as the app compiles to pure Dalvik/ART bytecode (`classes.dex`) with no native NDK binary dependencies.
 - **Minimum Android Version**: **Android 4.4 (KitKat, API level 19)** (`minSdkVersion="19"`).
-- **Target Android Version**: **Android 15 (API level 35)** (`targetSdkVersion="35"`).
+- **Target Android Version**: **Android 15 (API level 36)** (`targetSdkVersion="36"`).
 - **Maximum Android Version**: **No upper limit** (`maxSdkVersion` is not set). The app is forward-compatible with Android 15+ and automatically adapts to modern platform APIs:
   - Uses `WindowInsetsController` on Android 11+ (API 30+) and `SYSTEM_UI_FLAG_IMMERSIVE_STICKY` on Android 4.4–10 (API 19–29).
   - Uses `NotificationChannel` on Android 8.0+ (API 26+).
@@ -54,7 +54,7 @@ The project contains two primary components in `src/com/eggwall/soundsleep/` and
 ### Prerequisites
 - Java 21 JDK (`/usr/lib/jvm/java-21-openjdk-amd64`)
 - Gradle Wrapper (`./gradlew`, included in the repository; uses Gradle 8.14 and Android Gradle Plugin 8.8.0)
-- Android SDK with **Platform 35** (`platforms/android-35/android.jar`) and **Build-Tools 35.0.0** (`build-tools/35.0.0/`)
+- Android SDK with **Platform 36** (`platforms/android-36/android.jar`) and **Build-Tools 36.0.0** (`build-tools/36.0.0/`)
 
 ### 1. Configure SDK Location
 Ensure `sdk.dir` in `local.properties` points to your Android SDK installation (or set the `ANDROID_HOME` environment variable):

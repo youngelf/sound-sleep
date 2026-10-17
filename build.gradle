@@ -1,5 +1,5 @@
 plugins {
-    id 'com.android.application' version '8.8.0'
+    id 'com.android.application' version '8.9.0'
 }
 
 def keystoreProps = new Properties()
@@ -9,16 +9,16 @@ if (keystorePropsFile.exists()) {
 }
 
 android {
-    namespace 'com.eggwall.soundsleep'
-    compileSdk 35
-    buildToolsVersion '35.0.0'
+    namespace = 'com.eggwall.soundsleep'
+    compileSdk = 36
+    buildToolsVersion = '36.0.0'
 
     defaultConfig {
-        applicationId 'com.eggwall.soundsleep'
-        minSdk 19
-        targetSdk 35
-        versionCode 8
-        versionName '1.08'
+        applicationId = 'com.eggwall.soundsleep'
+        minSdk = 19
+        targetSdk = 36
+        versionCode = 11
+        versionName ='1.11'
     }
 
     sourceSets {
@@ -40,11 +40,11 @@ android {
 
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
+            signingConfig = signingConfigs.debug
         }
         release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
+            signingConfig = signingConfigs.release
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-project.txt'
         }
     }
