@@ -52,8 +52,8 @@ The project contains two primary components in `src/com/eggwall/soundsleep/` and
 ## Build and Install Steps
 
 ### Prerequisites
-- Java JDK (`javac`, `jar`, `keytool`)
-- Apache Ant (`ant`)
+- Java 21 JDK (`/usr/lib/jvm/java-21-openjdk-amd64`)
+- Gradle Wrapper (`./gradlew`, included in the repository; uses Gradle 8.14 and Android Gradle Plugin 8.8.0)
 - Android SDK with **Platform 35** (`platforms/android-35/android.jar`) and **Build-Tools 35.0.0** (`build-tools/35.0.0/`)
 
 ### 1. Configure SDK Location
@@ -63,56 +63,50 @@ Ensure `sdk.dir` in `local.properties` points to your Android SDK installation (
 sdk.dir=/usr/local/google/home/viki/Android/Sdk
 ```
 
-*(If you use a different platform or build-tools version, update `target` and `build.tools.version` in `project.properties`.)*
-
-### 2. Build the APK
+### 2. Build the App Bundle (`.aab`) and APK
 From the project root directory:
 
-- **Build for release**:
+- **Build Play Store Android App Bundle (`.aab`) for release**:
   ```bash
-  ant release
+  ./gradlew bundleRelease
   ```
-  Produces a signed, zipaligned APK at `bin/BabyMusic-release.apk` (when signing keys are configured in `ant.properties`) or an unsigned APK at `bin/BabyMusic-release-unsigned.apk`.
+  Produces a signed release Android App Bundle at `build/outputs/bundle/release/SoundSleep-release.aab`.
 
-- **Build for debug**:
+- **Build APK for release**:
   ```bash
-  ant debug
+  ./gradlew assembleRelease
   ```
-  Produces a debug-signed APK at `bin/BabyMusic-debug.apk` using `debug.keystore`.
+  Produces a signed, zipaligned release APK at `build/outputs/apk/release/SoundSleep-release.apk`.
+
+- **Build APK for debug**:
+  ```bash
+  ./gradlew assembleDebug
+  ```
+  Produces a debug-signed APK at `build/outputs/apk/debug/SoundSleep-debug.apk`.
 
 - **Clean build artifacts**:
   ```bash
-  ant clean
+  ./gradlew clean
   ```
 
 ### 3. Install on a Device
 Connect an Android device with USB debugging enabled (or start an emulator) and run:
 
 ```bash
-adb install -r bin/BabyMusic-release.apk
+adb install -r build/outputs/apk/release/SoundSleep-release.apk
 ```
 
 ---
 
 ## Production Signing Key Configuration
 
-Release signing is configured in **`ant.properties`**.
-
-For convenience during local testing, `ant.properties` is currently configured to use the local `debug.keystore`:
+Release signing is configured in **`build.gradle`** (`android.signingConfigs.release`), which reads the keystore path, alias, and passwords from **`ant.properties`**:
 
 ```properties
-key.store=debug.keystore
-key.alias=androiddebugkey
-key.store.password=android
-key.alias.password=android
+key.store=release-keystore.key
+key.alias=sleep sounds release key
+key.store.password=...
+key.alias.password=...
 ```
 
-To sign release builds with your **production keys**:
-
-1. Edit **`ant.properties`** to point `key.store` and `key.alias` to your production keystore and alias, and remove the plaintext password properties so they are not committed to version control:
-   ```properties
-   key.store=/path/to/your/production-release.keystore
-   key.alias=your_production_key_alias
-   ```
-2. Run `ant release`. The `-sign-release` target in `build.xml` will interactively prompt you for your keystore password and key alias password, then sign and output `bin/BabyMusic-release.apk`.
-   - For non-interactive/CI builds, you can pass the passwords on the command line (`ant release -Dkey.store.password=... -Dkey.alias.password=...`) or store them in `local.properties` (which is excluded from version control).
+Both `./gradlew bundleRelease` and `./gradlew assembleRelease` automatically sign the output `.aab` and `.apk` using `release-keystore.key` and the credentials defined in `ant.properties`. To switch to a different keystore or alias, update those properties in `ant.properties` (or directly in the `signingConfigs.release` block of `build.gradle`).

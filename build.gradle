@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application' version '8.8.0'
+}
+
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('ant.properties')
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
+android {
+    namespace 'com.eggwall.soundsleep'
+    compileSdk 35
+    buildToolsVersion '35.0.0'
+
+    defaultConfig {
+        applicationId 'com.eggwall.soundsleep'
+        minSdk 19
+        targetSdk 35
+        versionCode 8
+        versionName '1.08'
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src']
+            res.srcDirs = ['res']
+        }
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file(keystoreProps.getProperty('key.store', 'release-keystore.key'))
+            storePassword keystoreProps.getProperty('key.store.password')
+            keyAlias keystoreProps.getProperty('key.alias')
+            keyPassword keystoreProps.getProperty('key.alias.password')
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-project.txt'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
