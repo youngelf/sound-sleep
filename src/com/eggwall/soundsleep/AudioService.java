@@ -21,30 +21,40 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.content.res.AssetFileDescriptor;
+import android.database.Cursor;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.provider.MediaStore;
 import android.util.Log;
 
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 
 /**
  * Runs the music in the background and holds a wake lock during the duration of music playing.
  */
 public class AudioService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener,
-        MediaPlayer.OnCompletionListener {
+        MediaPlayer.OnCompletionListener, AudioManager.OnAudioFocusChangeListener {
     /** The namespace of our application, used for qualifying local messages. */
-    private static String NAMESPACE = "com.eggwall.soundsleep";
+    private static final String NAMESPACE = "com.eggwall.soundsleep";
 
     /** For logging */
     private static final String TAG = "AudioService";
@@ -74,7 +84,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             MESSAGE_SILENCE, MESSAGE_MUSIC, MESSAGE_WHITE_NOISE
     };
     /** Map to perform message -> type lookups. */
-    public static final HashMap <String, Integer> messageToType = new HashMap<String, Integer>(3);
+    public static final HashMap<String, Integer> messageToType = new HashMap<>(3);
     static {
         messageToType.put(MESSAGE_SILENCE, SILENCE);
         messageToType.put(MESSAGE_MUSIC, MUSIC);
@@ -84,17 +94,17 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     /** This represents in invalid position in the list and also an invalid resource. */
     private static final int INVALID_POSITION = -1;
     /** Name of the directory in the main folder containing sleeping music */
-    private final static String MUSIC_DIR = "sleeping";
+    private static final String MUSIC_DIR = "sleeping";
 
     /** The ID for the global notification we post. */
-    private final static int NOTIFICATION_ID = 1;
+    private static final int NOTIFICATION_ID = 1;
     /** Notification channel ID for Android O and above. */
-    private final static String NOTIFICATION_CHANNEL_ID = "sound_sleep_playback";
+    private static final String NOTIFICATION_CHANNEL_ID = "sound_sleep_playback";
 
     /** Single instance of random number generator */
     private final Random mRandom = new Random();
     /** The SDK version */
-    private final static int SDK = Build.VERSION.SDK_INT;
+    private static final int SDK = Build.VERSION.SDK_INT;
 
     /** The object that actually plays the music on our behalf. */
     private MediaPlayer mPlayer;
@@ -102,10 +112,16 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     private int mTypePlaying = SILENCE;
     /** The actual directory that corresponds to the external SD card. */
     private File mMusicDir;
-    /** Names of all the songs */
+    /** Names of all the songs in legacy directory mode */
     private String[] mFilenames;
+    /** Discovered MediaStore URIs for songs in the sleeping folder */
+    private List<Uri> mTrackUris;
     /** The global manager for notifications */
     private NotificationManager mNotificationManager;
+    /** System audio manager for handling audio focus */
+    private AudioManager mAudioManager;
+    /** AudioFocusRequest used on API 26+ */
+    private AudioFocusRequest mAudioFocusRequest;
 
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
@@ -119,6 +135,9 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (mNotificationManager == null) {
             mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        }
+        if (mAudioManager == null) {
+            mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         }
         // If we don't get an extra (impossible), play white noise.
         final int typeOfResource = (intent != null)
@@ -159,6 +178,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      *             is a signal to stop playing music altogether.
      */
     private void play(int type) {
+        requestAudioFocus();
         if (type == MUSIC) {
             final MediaPlayer player = tryStartingMusic();
             if (player != null) {
@@ -206,24 +226,114 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         final MediaPlayer player = new MediaPlayer();
         // Keep the CPU awake while playing music.
         player.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+        if (SDK >= Build.VERSION_CODES.LOLLIPOP) {
+            final AudioAttributes attrs = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build();
+            player.setAudioAttributes(attrs);
+        }
         player.setOnPreparedListener(this);
+        player.setOnErrorListener(this);
         return player;
     }
 
     /**
-     * Try getting music from the [sdcard]/music/sleeping
+     * Request audio focus from the system AudioManager.
+     */
+    @SuppressWarnings("deprecation")
+    private void requestAudioFocus() {
+        if (mAudioManager == null) {
+            return;
+        }
+        if (SDK >= Build.VERSION_CODES.O) {
+            if (mAudioFocusRequest == null) {
+                final AudioAttributes attrs = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build();
+                mAudioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                        .setAudioAttributes(attrs)
+                        .setOnAudioFocusChangeListener(this)
+                        .build();
+            }
+            mAudioManager.requestAudioFocus(mAudioFocusRequest);
+        } else {
+            mAudioManager.requestAudioFocus(
+                    this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+        }
+    }
+
+    /**
+     * Abandon audio focus when playback stops.
+     */
+    @SuppressWarnings("deprecation")
+    private void abandonAudioFocus() {
+        if (mAudioManager == null) {
+            return;
+        }
+        if (SDK >= Build.VERSION_CODES.O) {
+            if (mAudioFocusRequest != null) {
+                mAudioManager.abandonAudioFocusRequest(mAudioFocusRequest);
+            }
+        } else {
+            mAudioManager.abandonAudioFocus(this);
+        }
+    }
+
+    @Override
+    public void onAudioFocusChange(int focusChange) {
+        if (mPlayer == null) {
+            return;
+        }
+        switch (focusChange) {
+            case AudioManager.AUDIOFOCUS_LOSS:
+                mTypePlaying = SILENCE;
+                stopSelf();
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                if (mPlayer.isPlaying()) {
+                    mPlayer.pause();
+                }
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                mPlayer.setVolume(0.2f, 0.2f);
+                break;
+            case AudioManager.AUDIOFOCUS_GAIN:
+                mPlayer.setVolume(1.0f, 1.0f);
+                if (!mPlayer.isPlaying()) {
+                    mPlayer.start();
+                }
+                break;
+        }
+    }
+
+    /**
+     * Try getting music from MediaStore (Scoped Storage) or [sdcard]/Music/sleeping.
      * @return a valid media player if we can play from it. Returns null if we didn't find music, or we can't play
      * custom music for any reason.
      */
     private MediaPlayer tryStartingMusic() {
         final MediaPlayer player = getGenericMediaPlayer();
-        // Try to open the SD card and read from there. If nothing is found, play the
-        // default music.
+        final Uri nextUri = nextTrackUriFromMediaStore();
+        if (nextUri != null) {
+            Log.d(TAG, "Now playing MediaStore URI: " + nextUri);
+            try {
+                player.setDataSource(getApplicationContext(), nextUri);
+                player.setOnCompletionListener(this);
+                player.setLooping(false);
+                return player;
+            } catch (IOException | SecurityException e) {
+                Log.e(TAG, "Could not play MediaStore URI, falling back.", e);
+            }
+        }
+
+        // Fallback to direct file path on older devices.
         final int nextPosition = nextTrackFromCard();
         if (nextPosition == INVALID_POSITION) {
+            player.release();
             return null;
         }
-        // Play files, not resources. Play the music file given here.
         final String file = mMusicDir.getAbsolutePath() + File.separator + mFilenames[nextPosition];
         Log.d(TAG, "Now playing " + file);
         try {
@@ -231,12 +341,60 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         } catch (IOException e) {
             Log.e(TAG, "Could not create a media player instance. Full error below.");
             e.printStackTrace();
+            player.release();
             return null;
         }
         player.setOnCompletionListener(this);
         // Play this song, and a different one when done.
         player.setLooping(false);
         return player;
+    }
+
+    /**
+     * Queries MediaStore for audio files located in a "sleeping" directory and returns a random track URI.
+     */
+    private Uri nextTrackUriFromMediaStore() {
+        if (mTrackUris == null) {
+            mTrackUris = querySleepingTracksFromMediaStore();
+        }
+        if (mTrackUris.isEmpty()) {
+            return null;
+        }
+        return mTrackUris.get(mRandom.nextInt(mTrackUris.size()));
+    }
+
+    /**
+     * Queries MediaStore.Audio.Media for tracks under the "sleeping" directory.
+     */
+    @SuppressWarnings("deprecation")
+    private List<Uri> querySleepingTracksFromMediaStore() {
+        final List<Uri> uris = new ArrayList<>();
+        final String[] projection = new String[] { MediaStore.Audio.Media._ID };
+        final String selection;
+        final String[] selectionArgs = new String[] { "%" + MUSIC_DIR + "/%" };
+        if (SDK >= Build.VERSION_CODES.Q) {
+            selection = MediaStore.Audio.Media.RELATIVE_PATH + " LIKE ?";
+        } else {
+            selection = MediaStore.Audio.Media.DATA + " LIKE ?";
+        }
+        try (Cursor cursor = getContentResolver().query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                null)) {
+            if (cursor != null) {
+                final int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID);
+                while (cursor.moveToNext()) {
+                    final long id = cursor.getLong(idColumn);
+                    uris.add(ContentUris.withAppendedId(
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id));
+                }
+            }
+        } catch (SecurityException | IllegalArgumentException e) {
+            Log.w(TAG, "Unable to query MediaStore for sleeping music", e);
+        }
+        return uris;
     }
 
     /**
@@ -285,6 +443,7 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
      * [sdcard]/Music/sleeping.
      * @return the file representing the music directory.
      */
+    @SuppressWarnings("deprecation")
     private static File getMusicDir() {
         final String state = Environment.getExternalStorageState();
         if (!Environment.MEDIA_MOUNTED.equals(state)) {
@@ -308,15 +467,16 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
     }
 
     /**
-     * Post an ongoing notification while music or white noise is playing.
+     * Promote this service to a foreground service with an ongoing notification while playing audio.
      */
+    @SuppressWarnings("deprecation")
     private void setForegroundService() {
         final Intent showClock = new Intent(this, SleepActivity.class);
         final int pendingFlags = (SDK >= Build.VERSION_CODES.M)
                 ? (PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE)
                 : PendingIntent.FLAG_UPDATE_CURRENT;
         final PendingIntent pending = PendingIntent.getActivity(this, 0, showClock, pendingFlags);
-        final String title = "Playing music";
+        final String title = getString(R.string.playing_music);
         final Notification.Builder builder;
         if (SDK >= Build.VERSION_CODES.O) {
             final NotificationChannel channel = new NotificationChannel(
@@ -328,11 +488,20 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
         } else {
             builder = new Notification.Builder(this);
         }
-        builder.setContentTitle(title)
+        final Notification notification = builder
+                .setContentTitle(title)
                 .setSmallIcon(R.drawable.ic_launcher)
                 .setOngoing(true)
-                .setContentIntent(pending);
-        mNotificationManager.notify(NOTIFICATION_ID, builder.build());
+                .setContentIntent(pending)
+                .build();
+        if (SDK >= Build.VERSION_CODES.Q) {
+            startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+        }
     }
 
     /**
@@ -344,14 +513,22 @@ public class AudioService extends Service implements MediaPlayer.OnErrorListener
             mPlayer.release();
             mPlayer = null;
         }
+        abandonAudioFocus();
     }
 
     /**
-     * Remove the persistent notification.
+     * Stop foreground state and remove the persistent notification.
      */
+    @SuppressWarnings("deprecation")
     private void removeNotification() {
-        // Get rid of our notification
-        mNotificationManager.cancel(NOTIFICATION_ID);
+        if (SDK >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE);
+        } else {
+            stopForeground(true);
+        }
+        if (mNotificationManager != null) {
+            mNotificationManager.cancel(NOTIFICATION_ID);
+        }
     }
 
     @Override

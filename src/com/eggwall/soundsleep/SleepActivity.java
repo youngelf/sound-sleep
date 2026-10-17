@@ -16,9 +16,14 @@
 
 package com.eggwall.soundsleep;
 
+import android.Manifest;
 import android.app.ActionBar;
 import android.app.Activity;
-import android.content.*;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -48,12 +53,14 @@ public class SleepActivity extends Activity {
     private static final int DELAY = 10 * 60 * 1000;
     /** Initial delay to change clock and icon location immediately after application startup. */
     private static final int INITIAL_DELAY = 500;
+    /** Request code for audio storage runtime permission. */
+    private static final int REQUEST_AUDIO_PERMISSION = 1001;
 
     /** Counts up to 10, to make the icons maximally dark. At 0, icons are at maximal brightness. */
     private int mAlphaDecrement = 1;
 
     /** The SDK version, stored off because we read it everywhere. */
-    private final static int SDK = Build.VERSION.SDK_INT;
+    private static final int SDK = Build.VERSION.SDK_INT;
     /** The width, height of the cloud icon. */
     private Pair<Integer, Integer> cloudSize = null;
     /** The width, height of the musical note icon. */
@@ -62,7 +69,9 @@ public class SleepActivity extends Activity {
     /** The state the application is currently in. */
     private int mState = AudioService.SILENCE;
     /** Key to store {@link #mState} in a bundle. */
-    private static String STATE_KEY = "state-key";
+    private static final String STATE_KEY = "state-key";
+    /** Whether we have already prompted for audio read permission in this session. */
+    private boolean mPermissionRequested = false;
 
     /** Detector used to identify and ignore upward navigation swipes from the bottom of the screen. */
     private GestureDetector mGestureDetector;
@@ -158,8 +167,8 @@ public class SleepActivity extends Activity {
      *              {@link AudioService#SILENCE} which determines what the {@link AudioService} is currently doing.
      */
     private void setIconFromState(int state) {
-        final ImageView cloud = (ImageView) findViewById(R.id.cloud);
-        final ImageView note = (ImageView) findViewById(R.id.note);
+        final ImageView cloud = findViewById(R.id.cloud);
+        final ImageView note = findViewById(R.id.note);
         switch (state) {
             case AudioService.MUSIC:
                 cloud.setImageResource(R.drawable.rain);
@@ -203,21 +212,24 @@ public class SleepActivity extends Activity {
      * Calculates the dimension of the entire window. Safe if called repeatedly.
      */
     private void populateTopLevelDimen() {
-        if (mWidth == 0) {
-            final View topLevel = findViewById(R.id.toplevel);
-            mWidth = topLevel.getRight();
-        }
-        if (mHeight == 0) {
-            final View topLevel = findViewById(R.id.toplevel);
-            mHeight = topLevel.getBottom();
+        final View topLevel = findViewById(R.id.toplevel);
+        if (topLevel != null) {
+            final int width = topLevel.getWidth() > 0 ? topLevel.getWidth() : topLevel.getRight();
+            final int height = topLevel.getHeight() > 0 ? topLevel.getHeight() : topLevel.getBottom();
+            if (width > 0) {
+                mWidth = width;
+            }
+            if (height > 0) {
+                mHeight = height;
+            }
         }
         if (cloudSize == null) {
             final View cloud = findViewById(R.id.cloud);
-            cloudSize = new Pair<Integer, Integer>(cloud.getMeasuredWidth(), cloud.getMeasuredHeight());
+            cloudSize = new Pair<>(cloud.getMeasuredWidth(), cloud.getMeasuredHeight());
         }
         if (noteSize == null) {
             final View note = findViewById(R.id.note);
-            noteSize = new Pair<Integer, Integer>(note.getMeasuredWidth(), note.getMeasuredHeight());
+            noteSize = new Pair<>(note.getMeasuredWidth(), note.getMeasuredHeight());
         }
     }
 
@@ -278,6 +290,7 @@ public class SleepActivity extends Activity {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // Go full screen and remove the title/action bar.
@@ -286,9 +299,10 @@ public class SleepActivity extends Activity {
         if (actionBar != null) {
             actionBar.hide();
         }
-        getWindow().addFlags(
-                WindowManager.LayoutParams.FLAG_FULLSCREEN
-                | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if (SDK < Build.VERSION_CODES.R) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
         setContentView(R.layout.main);
         mTouchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
         mGestureDetector = new GestureDetector(this, mGestureListener);
@@ -353,6 +367,7 @@ public class SleepActivity extends Activity {
      * Set the full screen view (hiding status bar, menu/action bar, and on-screen
      * home/recents navigation buttons), and disable screen timeout while running.
      */
+    @SuppressWarnings("deprecation")
     private void setGlobalScreenSettings() {
         final Window window = getWindow();
         // Keep the screen always on, irrespective of power state.
@@ -400,7 +415,26 @@ public class SleepActivity extends Activity {
      */
     @SuppressWarnings("unused")
     public void musicPressed(View unused) {
+        if (SDK >= Build.VERSION_CODES.M && !mPermissionRequested) {
+            final String permission = (SDK >= Build.VERSION_CODES.TIRAMISU)
+                    ? Manifest.permission.READ_MEDIA_AUDIO
+                    : Manifest.permission.READ_EXTERNAL_STORAGE;
+            if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+                mPermissionRequested = true;
+                requestPermissions(new String[] { permission }, REQUEST_AUDIO_PERMISSION);
+                return;
+            }
+        }
         sendRequest(AudioService.MUSIC);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_AUDIO_PERMISSION) {
+            sendRequest(AudioService.MUSIC);
+        }
     }
 
     /**
@@ -412,7 +446,6 @@ public class SleepActivity extends Activity {
     private void sendRequest(int command) {
         // The user has touched the screen, show the icons a bit brighter.
         resetAlphaDecrement();
-        // TODO(viki) Bad idea. We should use some resolution mechanism rather than bare name.
         final Intent i = new Intent(this, AudioService.class);
         i.putExtra(AudioService.REQUEST, command);
         startService(i);
